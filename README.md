@@ -1,8 +1,8 @@
-=nixpkgs-monitor
+# nixpkgs-monitor
 
 NixPkgs package status, freshness and security status monitor
 
-== updatetool.rb
+## updatetool.rb
 
 (re)generates package caches using --list-{arch,deb,nix,gentoo}
 
@@ -16,12 +16,12 @@ Coverage report is an estimate. More precise report can only be obtained during 
 
 Reports look somewhat ugly.
 
-== comparepackages.rb
+## comparepackages.rb
 
 Matches packages in one distro to packages in another one.
 To be used for experimentation only.
 Probably you don't care that it exists.
 
-== Debian watchfiles tools
+## Debian watchfiles tools
 
 Scripts and a writeup of an experiment to see just how useful Debian watchfiles are.
