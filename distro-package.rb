@@ -231,7 +231,7 @@ module DistroPackage
 
     def self.instantiate(attr, name)
       url = 'none'
-      if %x(nix-instantiate --eval-only --xml --strict -A #{attr}.src.urls /etc/nixos/nixpkgs) =~ /string value="([^"]*)"/
+      if %x(nix-instantiate --eval-only --xml --strict -A #{attr}.src.urls ./nixpkgs/) =~ /string value="([^"]*)"/
         url = $1
       else 
         puts "failed to get url for #{attr} #{name}"
@@ -272,16 +272,14 @@ module DistroPackage
       blacklist = []
       nix_list = {}
 
-      %x(nix-env -qa '*' --attr-path -I /etc/nixos/|uniq).split("\n").each do|entry|
+      puts %x(git clone https://github.com/NixOS/nixpkgs.git)
+      puts %x(cd nixpkgs && git pull --rebase)
+
+      %x(nix-env -qa '*' --attr-path --file ./nixpkgs/|uniq).split("\n").each do|entry|
         next if blacklist.include? entry
-        if entry =~ /(\S*)\s*(.*)/
-          attr = $1
-          name = $2
-          if attr.start_with? "nixos.pkgs."
-            attr.sub!("nixos.pkgs.", "")
-            package = Nix.instantiate(attr, name)
-            nix_list[package.name] = package if package
-          end
+        if /(?<attr>\S*)\s*(?<name>.*)/ =~ entry
+          package = Nix.instantiate(attr, name)
+          nix_list[package.name] = package if package
         else
           puts "failed to parse #{entry}"
         end
