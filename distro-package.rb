@@ -225,7 +225,9 @@ module DistroPackage
   class Nix < Package
 
     def version
-      @version.gsub(/-profiling$/, "").gsub(/-gimp-2.6.\d+-plugin$/,"")
+      result = @version.gsub(/-profiling$/, "").gsub(/-gimp-2.6.\d+-plugin$/,"")
+      result.gsub!(/-3\.9\.\d$/,"") if internal_name.include? 'linuxPackages'
+      return result
     end
 
 

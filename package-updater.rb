@@ -2,7 +2,7 @@ require 'rubygems/package'
 require 'zlib'
 require 'json'
 
-require './distro-package.rb'
+require 'distro-package.rb'
 
 module PackageUpdater
 
@@ -102,6 +102,33 @@ module PackageUpdater
     end
 
 
+    # check that package and tarball versions match
+    def self.versions_match?(pkg)
+      url = pkg.url
+      if url =~ %r{/([^/]*)$}
+        file = $1
+        (package_name, file_version) = parse_tarball_name(file)
+
+        if file_version and package_name and true # test only
+          v1 = file_version.downcase
+          # removes haskell suffix, gimp plugin suffix and FIXME: linux version
+          # FIXME: linux version removal breaks a couple of matches
+          v2 = pkg.version.downcase
+          unless (v1 == v2) or (v1.gsub(/[-_]/,".") == v2) or (v1 == v2.gsub(".",""))
+            log.info "version mismatch: #{package_name} #{file_version} #{file} #{pkg.name} #{pkg.version}"
+            return false
+          end
+          return true
+        else
+          log.info "failed to parse tarball #{file} #{pkg.internal_name}"
+        end
+      else
+        log.info "failed to parse url #{url} #{pkg.internal_name}"
+      end
+      return false
+    end
+
+
     # TODO: refactor: put version cleanup and matching code somewhere else
     def self.new_tarball_version(pkg, tarballs)
       url = pkg.url;
@@ -113,11 +140,8 @@ module PackageUpdater
           v1 = file_version.downcase
           # removes haskell suffix, gimp plugin suffix and FIXME: linux version
           # FIXME: linux version removal breaks a couple of matches
-          v2 = pkg.version.downcase.gsub(/-profiling$/,"").gsub(/-gimp-2.6.\d+-plugin$/,"").gsub(/-3\.9\.7$/,"")
-          unless (v1 == v2) or (v1.gsub(/[-_]/,".") == v2) or (v1 == v2.gsub(".",""))
-            log.warn "version mismatch: #{package_name} #{file_version} #{file} #{pkg.name} #{pkg.version}"
-            return nil
-          end
+          v2 = pkg.version.downcase.gsub(/-3\.9\.7$/,"")
+          return nil unless versions_match?(pkg)
 
           package_name = package_name.downcase
           vlist = tarballs[package_name]

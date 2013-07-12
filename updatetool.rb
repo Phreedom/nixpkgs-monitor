@@ -1,8 +1,10 @@
+#!/usr/bin/env ruby
+
 require 'optparse'
 require 'mechanize'
 require 'logger'
-require './distro-package.rb'
-require './package-updater.rb'
+require 'distro-package.rb'
+require 'package-updater.rb'
 include PackageUpdater
 
 log = Logger.new(STDOUT)
@@ -31,6 +33,12 @@ OptionParser.new do |o|
 
   o.on("--list-gentoo", "List Gentoo packages") do
     log.debug DistroPackage::Gentoo.generate_list.inspect
+  end
+
+  o.on("--check-pkg-version-match", "List Nix packages for which either tarball can't be parsed or its version doesn't match the package version") do
+    DistroPackage::Nix.list.each_value do |pkg|
+      puts pkg.serialize unless Updater.versions_match?(pkg)
+    end
   end
 
   o.on("--check-updates", "list NixPkgs packages which have updates available") do

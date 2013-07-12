@@ -1,5 +1,5 @@
 require "test/unit"
-require "./package-updater.rb"
+require "package-updater.rb"
 include PackageUpdater
 
 class TestSimple < Test::Unit::TestCase
