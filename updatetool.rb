@@ -17,6 +17,21 @@ PackageUpdater::Log = log
 
 csv_report_file = nil
 
+updaters = [ 
+             Repository::CPAN, # + not too horrible
+             Repository::RubyGems, # +
+             Repository::Xorg, # + 
+             Repository::GNOME, #+
+             Distro::Gentoo, #+
+             Repository::Hackage, # +
+             Repository::Pypi, # +
+             Repository::KDE, # +
+             Repository::GNU,# + produces lots of warning trash
+             Repository::SF, # + lots of trash I can't avoid 
+             GentooDistfiles, # +
+             Distro::Arch # +
+]
+
 OptionParser.new do |o|
   o.on("-v", "Verbose output. Can be specified multiple times") do
     log.level -= 1
@@ -48,54 +63,32 @@ OptionParser.new do |o|
     end
   end
 
+
   o.on("--check-updates", "list NixPkgs packages which have updates available") do
-    updaters = [ 
-                 Repository::CPAN, # + not too horrible
-                 Repository::RubyGems, # +
-                 Repository::Xorg, # + 
-                 Repository::GNOME, #+
-                 Distro::Gentoo, #+
-                 Repository::Hackage, # +
-                 Repository::Pypi, # +
-                 Repository::KDE, # +
-                 Repository::GNU,# + produces lots of warning trash
-                 Repository::SF, # + lots of trash I can't avoid 
-                 GentooDistfiles, # +
-                 Distro::Arch # +
-               ]
+
     csv_string = CSV.generate do |csv|
-      csv << (['Attr', 'Name','Version'] + updaters.map(&:name))
+      csv << ([ 'Attr', 'Name','Version', 'Coverage' ] + updaters.map(&:name))
 
       DistroPackage::Nix.list.each_value do |pkg|
         report_line = [ pkg.internal_name, pkg.name, pkg.version ]
+        report_line << updaters.map{ |updater| (updater.covers?(pkg) ? 1 : 0) }.reduce(0, :+)
+
         updaters.each do |updater|
           new_ver = updater.newest_version_of pkg
           puts "#{pkg.internal_name}/#{pkg.name}:#{pkg.version} has new version #{new_ver} according to #{updater.name}" if new_ver
-          #report_line << ( new_ver ? new_ver : "" )
           report_line << new_ver
         end
+
         csv << report_line
       end
 
     end
     File.write(csv_report_file, csv_string) if csv_report_file
+
   end
 
+
   o.on("--check-package PACKAGE", "Check what updates are available for PACKAGE") do |pkgname|
-    updaters = [
-                  Repository::CPAN,
-                  Repository::RubyGems,
-                  Repository::Xorg,
-                  Repository::GNOME,
-                  Distro::Gentoo,
-                  Repository::Hackage,
-                  Repository::Pypi,
-                  Repository::KDE,
-                  Repository::GNU,
-                  Repository::SF,
-                  #GentooDistfiles,
-                  Distro::Arch,
-               ]
     pkg = DistroPackage::Nix.list[pkgname]
     updaters.each do |updater|
       new_ver = updater.newest_version_of pkg
@@ -103,31 +96,12 @@ OptionParser.new do |o|
     end
   end
   
+
   o.on("--coverage", "list NixPkgs packages which have (no) update coverage") do
+
     coverage = {}
     DistroPackage::Nix.list.each_value do |pkg|
-      coverage[pkg] = 0
-    end
-
-    updaters = [
-                  Repository::CPAN,
-                  Repository::RubyGems,
-                  Repository::Xorg,
-                  Repository::GNOME,
-                  Distro::Gentoo,
-                  Repository::Hackage,
-                  Repository::Pypi,
-                  Repository::KDE,
-                  Repository::GNU,
-                  Repository::SF,
-                  #GentooDistfiles, # coverage check not implemented
-                  Distro::Arch,
-               ];
-
-    coverage.each_key do |pkg|
-      updaters.each do |updater|
-        coverage[pkg] +=1 if updater.covers? pkg
-      end
+      coverage[pkg] = updaters.map{ |updater| (updater.covers?(pkg) ? 1 : 0) }.reduce(0, :+)
     end
 
     csv_string = CSV.generate do |csv|
@@ -142,7 +116,9 @@ OptionParser.new do |o|
     notcovered = coverage.keys.select { |pkg| coverage[pkg] <=0 }
     puts "Covered #{covered.count} packages: #{covered.map{|pkg| "#{pkg.name} #{coverage[pkg]}"}.inspect}"
     puts "Not covered #{notcovered.count} packages: #{notcovered.map{|pkg| "#{pkg.name}:#{pkg.version}"}.inspect}"
+
   end
+
 
   o.on("-h", "--help", "Show this message") do
     puts o

@@ -204,6 +204,10 @@ module PackageUpdater
 
 
   class GentooDistfiles < Updater
+    # no cheap way to find out right now, so be conservative
+    def self.covers?(pkg)
+      false
+    end
 
     def self.distfiles
       unless @distfiles
