@@ -3,6 +3,7 @@
 require 'optparse'
 require 'mechanize'
 require 'logger'
+require 'csv'
 require 'distro-package.rb'
 require 'package-updater.rb'
 include PackageUpdater
@@ -13,6 +14,8 @@ log.formatter = proc { |severity, datetime, progname, msg|
   "#{severity}: #{msg}\n"
 }
 PackageUpdater::Log = log
+
+csv_report_file = nil
 
 OptionParser.new do |o|
   o.on("-v", "Verbose output. Can be specified multiple times") do
@@ -33,6 +36,10 @@ OptionParser.new do |o|
 
   o.on("--list-gentoo", "List Gentoo packages") do
     log.debug DistroPackage::Gentoo.generate_list.inspect
+  end
+
+  o.on("--output-csv FILE", "Write report in CSV format to FILE") do |f|
+    csv_report_file = f
   end
 
   o.on("--check-pkg-version-match", "List Nix packages for which either tarball can't be parsed or its version doesn't match the package version") do
@@ -56,12 +63,22 @@ OptionParser.new do |o|
                  GentooDistfiles, # +
                  Distro::Arch # +
                ]
-    DistroPackage::Nix.list.each_value do |pkg|
-      updaters.each do |updater|
-        new_ver = updater.newest_version_of pkg
-        puts "#{pkg.internal_name}/#{pkg.name}:#{pkg.version} has new version #{new_ver} according to #{updater.name}" if new_ver
+    csv_string = CSV.generate do |csv|
+      csv << (['Attr', 'Name','Version'] + updaters.map(&:name))
+
+      DistroPackage::Nix.list.each_value do |pkg|
+        report_line = [ pkg.internal_name, pkg.name, pkg.version ]
+        updaters.each do |updater|
+          new_ver = updater.newest_version_of pkg
+          puts "#{pkg.internal_name}/#{pkg.name}:#{pkg.version} has new version #{new_ver} according to #{updater.name}" if new_ver
+          #report_line << ( new_ver ? new_ver : "" )
+          report_line << new_ver
+        end
+        csv << report_line
       end
+
     end
+    File.write(csv_report_file, csv_string) if csv_report_file
   end
 
   o.on("--check-package PACKAGE", "Check what updates are available for PACKAGE") do |pkgname|
@@ -91,6 +108,7 @@ OptionParser.new do |o|
     DistroPackage::Nix.list.each_value do |pkg|
       coverage[pkg] = 0
     end
+
     updaters = [
                   Repository::CPAN,
                   Repository::RubyGems,
@@ -105,11 +123,21 @@ OptionParser.new do |o|
                   #GentooDistfiles, # coverage check not implemented
                   Distro::Arch,
                ];
+
     coverage.each_key do |pkg|
       updaters.each do |updater|
         coverage[pkg] +=1 if updater.covers? pkg
       end
     end
+
+    csv_string = CSV.generate do |csv|
+      csv << ['Attr', 'Name','Version', 'Coverage']
+      coverage.each do |pkg, cvalue|
+        csv << [ pkg.internal_name, pkg.name, pkg.version, cvalue ]
+      end
+    end
+    File.write(csv_report_file, csv_string) if csv_report_file
+
     covered = coverage.keys.select { |pkg| coverage[pkg] > 0 }
     notcovered = coverage.keys.select { |pkg| coverage[pkg] <=0 }
     puts "Covered #{covered.count} packages: #{covered.map{|pkg| "#{pkg.name} #{coverage[pkg]}"}.inspect}"
