@@ -25,3 +25,9 @@ Probably you don't care that it exists.
 ## Debian watchfiles tools
 
 Scripts and a writeup of an experiment to see just how useful Debian watchfiles are.
+
+## How to install
+
+Have Nix? Just run:
+
+  nix-env -i nixpkgs-monitor-dev -f . -I /etc/nixos/
