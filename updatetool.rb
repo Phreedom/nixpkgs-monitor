@@ -16,6 +16,8 @@ log.formatter = proc { |severity, datetime, progname, msg|
 PackageUpdater::Log = log
 
 csv_report_file = nil
+action = nil
+pkgs_to_check = []
 
 updaters = [ 
              Repository::CPAN, # + not too horrible
@@ -58,67 +60,22 @@ OptionParser.new do |o|
   end
 
   o.on("--check-pkg-version-match", "List Nix packages for which either tarball can't be parsed or its version doesn't match the package version") do
-    DistroPackage::Nix.list.each_value do |pkg|
-      puts pkg.serialize unless Updater.versions_match?(pkg)
-    end
+    action = :check_pkg_version_match
   end
-
 
   o.on("--check-updates", "list NixPkgs packages which have updates available") do
-
-    csv_string = CSV.generate do |csv|
-      csv << ([ 'Attr', 'Name','Version', 'Coverage' ] + updaters.map(&:name))
-
-      DistroPackage::Nix.list.each_value do |pkg|
-        report_line = [ pkg.internal_name, pkg.name, pkg.version ]
-        report_line << updaters.map{ |updater| (updater.covers?(pkg) ? 1 : 0) }.reduce(0, :+)
-
-        updaters.each do |updater|
-          new_ver = updater.newest_version_of pkg
-          puts "#{pkg.internal_name}/#{pkg.name}:#{pkg.version} has new version #{new_ver} according to #{updater.name}" if new_ver
-          report_line << new_ver
-        end
-
-        csv << report_line
-      end
-
-    end
-    File.write(csv_report_file, csv_string) if csv_report_file
-
+    action = :check_updates
+    pkgs_to_check += DistroPackage::Nix.list.values
   end
-
 
   o.on("--check-package PACKAGE", "Check what updates are available for PACKAGE") do |pkgname|
-    pkg = DistroPackage::Nix.list[pkgname]
-    updaters.each do |updater|
-      new_ver = updater.newest_version_of pkg
-      puts "#{pkg.internal_name}/#{pkg.name}:#{pkg.version} has new version #{new_ver} according to #{updater.name}" if new_ver
-    end
+    action = :check_updates
+    pkgs_to_check << DistroPackage::Nix.list[pkgname]
   end
   
-
   o.on("--coverage", "list NixPkgs packages which have (no) update coverage") do
-
-    coverage = {}
-    DistroPackage::Nix.list.each_value do |pkg|
-      coverage[pkg] = updaters.map{ |updater| (updater.covers?(pkg) ? 1 : 0) }.reduce(0, :+)
-    end
-
-    csv_string = CSV.generate do |csv|
-      csv << ['Attr', 'Name','Version', 'Coverage']
-      coverage.each do |pkg, cvalue|
-        csv << [ pkg.internal_name, pkg.name, pkg.version, cvalue ]
-      end
-    end
-    File.write(csv_report_file, csv_string) if csv_report_file
-
-    covered = coverage.keys.select { |pkg| coverage[pkg] > 0 }
-    notcovered = coverage.keys.select { |pkg| coverage[pkg] <=0 }
-    puts "Covered #{covered.count} packages: #{covered.map{|pkg| "#{pkg.name} #{coverage[pkg]}"}.inspect}"
-    puts "Not covered #{notcovered.count} packages: #{notcovered.map{|pkg| "#{pkg.name}:#{pkg.version}"}.inspect}"
-
+    action = :coverage
   end
-
 
   o.on("-h", "--help", "Show this message") do
     puts o
@@ -126,4 +83,54 @@ OptionParser.new do |o|
   end
 
   o.parse(ARGV)
+end
+
+
+if action == :coverage
+
+  coverage = {}
+  DistroPackage::Nix.list.each_value do |pkg|
+    coverage[pkg] = updaters.map{ |updater| (updater.covers?(pkg) ? 1 : 0) }.reduce(0, :+)
+  end
+
+  csv_string = CSV.generate do |csv|
+    csv << ['Attr', 'Name','Version', 'Coverage']
+    coverage.each do |pkg, cvalue|
+      csv << [ pkg.internal_name, pkg.name, pkg.version, cvalue ]
+    end
+  end
+  File.write(csv_report_file, csv_string) if csv_report_file
+
+  covered = coverage.keys.select { |pkg| coverage[pkg] > 0 }
+  notcovered = coverage.keys.select { |pkg| coverage[pkg] <=0 }
+  puts "Covered #{covered.count} packages: #{covered.map{|pkg| "#{pkg.name} #{coverage[pkg]}"}.inspect}"
+  puts "Not covered #{notcovered.count} packages: #{notcovered.map{|pkg| "#{pkg.name}:#{pkg.version}"}.inspect}"
+
+elsif action == :check_updates
+
+  csv_string = CSV.generate do |csv|
+    csv << ([ 'Attr', 'Name','Version', 'Coverage' ] + updaters.map(&:name))
+
+    pkgs_to_check.each do |pkg|
+      report_line = [ pkg.internal_name, pkg.name, pkg.version ]
+      report_line << updaters.map{ |updater| (updater.covers?(pkg) ? 1 : 0) }.reduce(0, :+)
+
+      updaters.each do |updater|
+        new_ver = updater.newest_version_of pkg
+        puts "#{pkg.internal_name}/#{pkg.name}:#{pkg.version} has new version #{new_ver} according to #{updater.name}" if new_ver
+        report_line << new_ver
+      end
+
+      csv << report_line
+    end
+
+  end
+  File.write(csv_report_file, csv_string) if csv_report_file
+
+elsif action == :check_pkg_version_match
+
+  DistroPackage::Nix.list.each_value do |pkg|
+    puts pkg.serialize unless Updater.versions_match?(pkg)
+  end
+
 end
