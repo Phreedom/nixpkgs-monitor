@@ -18,6 +18,37 @@ module DistroPackage
     end
 
 
+    def self.deserialize(val)
+      if val =~/(\S*) (\S*) (\S*) (\S*)/
+        return new($1, $2, $3, $4)
+      else
+        raise" failed to parse #{val}"
+      end
+    end
+
+
+    def self.list
+      unless @list
+        @list = {}
+        File.readlines("#{@cache_name}.cache",:encoding => "ASCII").each do |line|
+          package = deserialize(line)
+          @list[package.name] = package
+        end
+      end
+
+      return @list
+    end
+
+
+    def self.serialize_list(list)
+      file = File.open("#{@cache_name}.cache", "w")
+      list.each_value do |package|
+        file.puts package.serialize
+      end
+      file.close
+    end
+
+
     def self.http_agent
       agent = Mechanize.new
       agent.user_agent = 'NixPkgs software update checker'
@@ -28,6 +59,7 @@ module DistroPackage
 
 
   class Arch < Package
+    @cache_name = "arch"
 
     # FIXME: support multi-output PKGBUILDs
     def self.parse_pkgbuild(entry, path)
@@ -77,27 +109,6 @@ module DistroPackage
     end
 
 
-    def self.deserialize(val)
-      if val =~/(\S*) (\S*) (\S*) (\S*)/
-        return Arch.new($1, $2, $3, $4)
-      else
-        raise" failed to parse #{val}"
-      end
-    end
-
-
-    def self.list
-      unless @list
-        @list = {}
-        File.readlines('arch.cache',:encoding => "ASCII").each do |line|
-          package = Arch.deserialize(line)
-          @list[package.name] = package
-        end
-      end
-
-      return @list
-    end
-
 
     def self.generate_list
       arch_list = {}
@@ -133,12 +144,7 @@ module DistroPackage
         end
       end
 
-      file = File.open("arch.cache", "w")
-      arch_list.each_value do |package|
-        file.puts package.serialize
-      end
-      file.close
-
+      serialize_list(arch_list)
       return arch_list
     end
 
@@ -147,6 +153,7 @@ module DistroPackage
 
   class Gentoo < Package
     attr_accessor :version_overlay, :version_upstream
+    @cache_name = "gentoo"
 
     def version
       return version_upstream if version_upstream
@@ -172,19 +179,6 @@ module DistroPackage
     end
 
 
-    def self.list
-      unless @list
-        @list = {}
-        File.readlines('gentoo.cache',:encoding => "ASCII").each do |line|
-          package = Gentoo.deserialize(line)
-          @list[package.name] = package
-        end
-      end
-
-      return @list
-    end
-
-
     def self.generate_list
       gentoo_list = {}
 
@@ -207,12 +201,7 @@ module DistroPackage
         end
       end
 
-      file = File.open("gentoo.cache", "w")
-      gentoo_list.each_value do |package|
-        file.puts package.serialize
-      end
-      file.close
-
+      serialize_list(gentoo_list)
       return gentoo_list
     end
 
@@ -223,6 +212,7 @@ module DistroPackage
   # which break matching because nixpks keeps only 1 of the packages
   # with the same name
   class Nix < Package
+    @cache_name = "nix"
 
     def version
       result = @version.gsub(/-profiling$/, "").gsub(/-gimp-2.6.\d+-plugin$/,"")
@@ -248,28 +238,6 @@ module DistroPackage
     end
 
 
-    def self.deserialize(val)
-      if val =~/(\S*) (\S*) (\S*) (\S*)/
-        return Nix.new($1, $2, $3, $4)
-      else
-        raise" failed to parse #{val}"
-      end
-    end
-
-
-    def self.list
-      unless @list
-        @list = {}
-        File.readlines('nix.cache',:encoding => "ASCII").each do |line|
-          package = Nix.deserialize(line)
-          @list[package.name] = package
-        end
-      end
-
-      return @list
-    end
-
-
     def self.generate_list
       blacklist = []
       nix_list = {}
@@ -287,12 +255,7 @@ module DistroPackage
         end
       end
 
-      file = File.open("nix.cache", "w")
-      nix_list.each_value do |package|
-        file.puts package.serialize
-      end
-      file.close
-
+      serialize_list(nix_list)
       return nix_list
     end
 
@@ -300,16 +263,7 @@ module DistroPackage
 
 
   class Debian < Package
-
-    def self.list
-      result = {}
-      File.readlines('debian.cache',:encoding => "ASCII").each do |line|
-        package = Debian.deserialize(line)
-        result[package.name] = package
-      end
-      return result
-    end
-
+    @cache_name = "debian"
 
     def self.normalize_name(name)
       result = name    
@@ -336,6 +290,7 @@ module DistroPackage
         end
       end
 
+      serialize_list(deb_list)
       return deb_list
     end
 
