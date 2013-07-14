@@ -32,6 +32,7 @@ updaters = [
              Repository::KDE, # +
              Repository::GNU,# + produces lots of warning trash
              Repository::SF, # + lots of trash I can't avoid 
+             Repository::NPMJS,
              GentooDistfiles, # +
              Distro::Arch # +
 ]
