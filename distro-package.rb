@@ -58,26 +58,25 @@ module DistroPackage
   end
 
 
-  class Arch < Package
-    @cache_name = "arch"
+  class GenericArch < Package
 
     # FIXME: support multi-output PKGBUILDs
     def self.parse_pkgbuild(entry, path)
       dont_expand = [ 'pidgin' ]
       override = {
-        'lzo2'	=> 'lzo',
-        'grep'	=> 'gnugrep',
-        'make'	=> 'gnumake',
-        'gnuplot '	=> 'gnuplot',
-        'tar'	=> 'gnutar',
-        'grep'	=> 'gnugrep',
-        'sed'	=> 'gnused',
-        'tidyhtml'	=> 'html-tidy',
-        'apache'	=> 'apache-httpd',
-        'bzr'	=> 'bazaar',
-        'libmp4v2'	=> 'mp4v2',
-        '"gummiboot"'	=> 'gummiboot',
-        'lm_sensors'	=> 'lm-sensors',
+        'lzo2'              => 'lzo',
+        'grep'          => 'gnugrep',
+        'make'         => 'gnumake',
+        'gnuplot '      => 'gnuplot',
+        'tar'            => 'gnutar',
+        'grep'           => 'gnugrep',
+        'sed'            => 'gnused',
+        'tidyhtml'      => 'html-tidy',
+        'apache'        => 'apache-httpd',
+        'bzr'           => 'bazaar',
+        'libmp4v2'      => 'mp4v2',
+        '"gummiboot"'   => 'gummiboot',
+        'lm_sensors'    => 'lm-sensors',
       }
 
       pkgbuild = File.read(path, :encoding => 'ISO-8859-1') 
@@ -108,7 +107,11 @@ module DistroPackage
       return Arch.new(entry, pkg_name, pkg_ver, url)
     end
 
+  end
 
+
+  class Arch < GenericArch
+    @cache_name = "arch"
 
     def self.generate_list
       arch_list = {}
