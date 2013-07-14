@@ -6,6 +6,8 @@ require 'logger'
 require 'csv'
 require 'distro-package.rb'
 require 'package-updater.rb'
+require 'security-advisory'
+
 include PackageUpdater
 
 log = Logger.new(STDOUT)
@@ -72,7 +74,11 @@ OptionParser.new do |o|
     action = :check_updates
     pkgs_to_check << DistroPackage::Nix.list[pkgname]
   end
-  
+
+  o.on("--find-unmatched-advisories", "Find security advisories which don't map to a Nix package(don't touch yet)") do
+    action = :find_unmatched_advisories
+  end
+
   o.on("--coverage", "list NixPkgs packages which have (no) update coverage") do
     action = :coverage
   end
@@ -131,6 +137,23 @@ elsif action == :check_pkg_version_match
 
   DistroPackage::Nix.list.each_value do |pkg|
     puts pkg.serialize unless Updater.versions_match?(pkg)
+  end
+
+elsif action == :find_unmatched_advisories
+
+  known_safe = [
+    # these advisories don't apply because they have been checked to refer to packages that don't exist in nixpgs
+    "GLSA-201210-02",
+  ]
+  SecurityAdvisory::GLSA.list.each do |glsa|
+    nixpkgs = glsa.matching_nixpkgs
+    if nixpkgs
+      log.info "Matched #{glsa.id} to #{nixpkgs.internal_name}"
+    elsif known_safe.include? glsa.id
+      log.info "Skipping #{glsa.id} as known safe"
+    else
+      log.warn "Failed to match #{glsa.id} #{glsa.packages}"
+    end
   end
 
 end

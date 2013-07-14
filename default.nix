@@ -22,6 +22,7 @@ echo $GEM_PATH
     ensureDir $gemlibpath
     cp distro-package.rb $gemlibpath
     cp package-updater.rb $gemlibpath
+    cp security-advisory.rb $gemlibpath
     echo $gemlibpath
 
     ensureDir $out/bin
