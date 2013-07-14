@@ -23,6 +23,17 @@ module PackageUpdater
     end
 
 
+    def self.version_cleanup!(version)
+      10.times do
+        # _all was added for p7zip
+        # add -stable?
+        version.gsub!(/\.gz|\.Z|\.bz2?|\.tbz|\.tbz2|\.lzma|\.lz|\.zip|\.xz|[-\.]tar$/, "")
+        version.gsub!(/\.tgz|\.iso|\.dfsg|\.7z|\.gem|\.full|[-_\.]?src|[-_\.]?[sS]ources?$/, "")
+        version.gsub!(/\.run|\.otf|-dist|\.deb|\.rpm|[-_]linux|-release|-bin|\.el$/, "")
+        version.gsub!(/[-_\.]i386|-i686|[-\.]orig|\.rpm|\.jar|_all$/, "")
+      end
+    end
+
     def self.parse_tarball_name(tarball)
       package_name = file_version = nil
 
@@ -37,10 +48,7 @@ module PackageUpdater
         return nil
       end
 
-      10.times do
-        #_all was added for p7zip
-        file_version.gsub!(/(\.gz|\.Z|\.bz2?|\.tbz|\.tbz2|\.lzma|\.lz|\.zip|\.xz|\.tar|\.tgz|\.iso|\.dfsg|\.7z|\.gem|\.full|[-_\.]?src|[-_\.]?[sS]ources?|[-\.]orig|\.rpm|\.jar|_all)$/, "")
-      end
+      version_cleanup!(file_version)
 
       return [ package_name, file_version ]
     end
