@@ -27,12 +27,22 @@ module DistroPackage
     end
 
 
+    def self.cache_file_name
+      "#{@cache_name}.cache"
+    end
+
+
     def self.list
       unless @list
         @list = {}
-        File.readlines("#{@cache_name}.cache",:encoding => "UTF-8").each do |line|
-          package = deserialize(line)
-          @list[package.name] = package
+
+        if File.exists? cache_file_name
+          File.readlines(cache_file_name, :encoding => "UTF-8").each do |line|
+            package = deserialize(line)
+            @list[package.name] = package
+          end
+        else
+          STDERR.puts "#{cache_file_name} doesn't exist"
         end
       end
 
@@ -41,7 +51,7 @@ module DistroPackage
 
 
     def self.serialize_list(list)
-      file = File.open("#{@cache_name}.cache", "w")
+      file = File.open(cache_file_name, "w")
       list.each_value do |package|
         file.puts package.serialize
       end
