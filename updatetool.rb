@@ -35,7 +35,8 @@ updaters = [
              Repository::NPMJS,
              GentooDistfiles, # +
              Distro::Arch, # +
-             Distro::AUR # +
+             Distro::Debian, # +
+             Distro::AUR, # +
 ]
 
 OptionParser.new do |o|
