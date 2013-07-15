@@ -34,7 +34,8 @@ updaters = [
              Repository::SF, # + lots of trash I can't avoid 
              Repository::NPMJS,
              GentooDistfiles, # +
-             Distro::Arch # +
+             Distro::Arch, # +
+             Distro::AUR # +
 ]
 
 OptionParser.new do |o|
@@ -42,8 +43,12 @@ OptionParser.new do |o|
     log.level -= 1
   end
 
-  o.on("--list-arch", "List arch packages") do
+  o.on("--list-arch", "List Arch packages") do
     log.debug DistroPackage::Arch.generate_list.inspect
+  end
+
+  o.on("--list-aur", "List AUR packages") do
+    log.debug DistroPackage::AUR.generate_list.inspect
   end
 
   o.on("--list-nix", "List nixpkgs packages") do

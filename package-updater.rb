@@ -544,6 +544,23 @@ module PackageUpdater
     end
 
 
+    # checks package versions against Arch AUR
+    class AUR < Updater
+
+      def self.covers?(pkg)
+        return ( DistroPackage::AUR.list[pkg.name] and usable_version?(pkg.version) )
+      end
+
+      def self.newest_version_of(pkg)
+        arch_pkg = DistroPackage::AUR.list[pkg.name]
+        return nil unless arch_pkg
+        return nil unless usable_version?(arch_pkg.version) and usable_version?(pkg.version)
+        return ( is_newer?(arch_pkg.version, pkg.version) ? arch_pkg.version : nil)
+      end
+
+    end
+
+
     # TODO: checks package versions against Debian Sid
     class Debian < Updater
 

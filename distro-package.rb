@@ -30,7 +30,7 @@ module DistroPackage
     def self.list
       unless @list
         @list = {}
-        File.readlines("#{@cache_name}.cache",:encoding => "ASCII").each do |line|
+        File.readlines("#{@cache_name}.cache",:encoding => "UTF-8").each do |line|
           package = deserialize(line)
           @list[package.name] = package
         end
@@ -80,10 +80,14 @@ module DistroPackage
       }
 
       pkgbuild = File.read(path, :encoding => 'ISO-8859-1') 
-      pkg_name = (pkgbuild =~ /pkgname=(.*)/ ? $1 : nil)
-      pkg_ver = (pkgbuild =~ /pkgver=(.*)/ ? $1 : nil)
+      pkg_name = (pkgbuild =~ /pkgname=(.*)/ ? $1.strip : nil)
+      pkg_ver = (pkgbuild =~ /pkgver=(.*)/ ? $1.strip : nil)
 
       pkg_name = entry if dont_expand.include? entry
+      unless pkg_name and pkg_ver
+        puts "skipping #{entry}: no package name or version"
+        return nil
+      end
       if pkg_name.include? "("
         puts "skipping #{entry}: unsupported multi-package PKGBUILD"
         return nil
@@ -104,7 +108,8 @@ module DistroPackage
       pkg_name = "ktp-#{$1}" if pkg_name =~ /telepathy-kde-(.*)/
 
       url = %x(bash -c 'source #{path} && echo $source').split("\n").first
-      return Arch.new(entry, pkg_name, pkg_ver, url)
+      url.strip! if url
+      return new(entry, pkg_name, pkg_ver, url)
     end
 
   end
@@ -130,7 +135,7 @@ module DistroPackage
         pkgbuild_name = File.join("packages", entry, "repos", "core-i686", "PKGBUILD") unless File.exists? pkgbuild_name
 
         if File.exists? pkgbuild_name
-          package = Arch.parse_pkgbuild(entry, pkgbuild_name)
+          package = parse_pkgbuild(entry, pkgbuild_name)
           arch_list[package.name] = package if package
         end
       end
@@ -142,7 +147,7 @@ module DistroPackage
         pkgbuild_name = File.join("community", entry, "repos", "community-i686", "PKGBUILD")
 
         if File.exists? pkgbuild_name
-          package = Arch.parse_pkgbuild(entry, pkgbuild_name)
+          package = parse_pkgbuild(entry, pkgbuild_name)
           arch_list[package.name] = package if package
         end
       end
@@ -153,6 +158,35 @@ module DistroPackage
 
   end
 
+
+  class AUR < GenericArch
+    @cache_name = "aur"
+
+    def self.generate_list
+      aur_list = {}
+
+      puts "Cloning AUR repos"
+      puts %x(curl http://aur3.org/all_pkgbuilds.tar.gz -O)
+      puts %x(rm -rf aur/*)
+      puts %x(mkdir aur)
+      puts %x(tar -xvf all_pkgbuilds.tar.gz  --show-transformed --transform s,/PKGBUILD,, --strip-components=1 -C aur)
+
+      puts "Scanning AUR"
+      Dir.entries("aur").each do |entry|
+        next if entry == '.' or entry == '..'
+
+        pkgbuild_name = File.join("aur", entry)
+        if File.exists? pkgbuild_name
+          package = parse_pkgbuild(entry, pkgbuild_name)
+          aur_list[package.name] = package if package
+        end
+      end
+
+      serialize_list(aur_list)
+      return aur_list
+    end
+
+  end
 
   class Gentoo < Package
     attr_accessor :version_overlay, :version_upstream
