@@ -11,6 +11,11 @@ module PackageUpdater
 
   class Updater
 
+    def self.friendly_name
+      name.gsub(/^PackageUpdater::/,"").gsub("::","_").downcase.to_sym
+    end
+
+
     def self.log
       PackageUpdater::Log
     end
