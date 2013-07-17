@@ -7,6 +7,7 @@ require 'csv'
 require 'distro-package.rb'
 require 'package-updater.rb'
 require 'security-advisory'
+require 'sequel'
 
 include PackageUpdater
 
@@ -20,6 +21,7 @@ PackageUpdater::Log = log
 csv_report_file = nil
 action = nil
 pkgs_to_check = []
+db_path = './db.sqlite'
 
 updaters = [ 
              Repository::CPAN, # + not too horrible
@@ -68,6 +70,10 @@ OptionParser.new do |o|
     csv_report_file = f
   end
 
+  o.on("--db DB_PATH", "Change default DB path to DB_PATH") do |new_db_path|
+    db_path = new_db_path
+  end
+
   o.on("--check-pkg-version-match", "List Nix packages for which either tarball can't be parsed or its version doesn't match the package version") do
     action = :check_pkg_version_match
   end
@@ -98,6 +104,8 @@ OptionParser.new do |o|
   o.parse(ARGV)
 end
 
+DB = Sequel.sqlite(db_path)
+
 if action == :coverage
 
   coverage = {}
@@ -105,10 +113,18 @@ if action == :coverage
     coverage[pkg] = updaters.map{ |updater| (updater.covers?(pkg) ? 1 : 0) }.reduce(0, :+)
   end
 
-  csv_string = CSV.generate do |csv|
-    csv << ['Attr', 'Name','Version', 'Coverage']
-    coverage.each do |pkg, cvalue|
-      csv << [ pkg.internal_name, pkg.name, pkg.version, cvalue ]
+  DB.transaction do
+    DB.create_table!(:estimated_coverage) do
+      String :pkg_attr, :unique => true, :primary_key => true
+      Integer :coverage
+    end
+
+    csv_string = CSV.generate do |csv|
+      csv << ['Attr', 'Name','Version', 'Coverage']
+      coverage.each do |pkg, cvalue|
+        csv << [ pkg.internal_name, pkg.name, pkg.version, cvalue ]
+        DB[:estimated_coverage] << { :pkg_attr => pkg.internal_name, :coverage => cvalue }
+      end
     end
   end
   File.write(csv_report_file, csv_string) if csv_report_file
@@ -120,6 +136,27 @@ if action == :coverage
 
 elsif action == :check_updates
 
+  updaters.each do |updater|
+    DB.transaction do
+
+      DB.create_table!(updater.friendly_name) do
+        String :pkg_attr, :unique => true, :primary_key => true
+        String :version
+      end
+
+      pkgs_to_check.each do |pkg|
+        new_ver = updater.newest_version_of pkg
+        if new_ver
+          puts "#{pkg.internal_name}/#{pkg.name}:#{pkg.version} " +
+               "has new version #{new_ver} according to #{updater.friendly_name}"
+          DB[updater.friendly_name] << { :pkg_attr => pkg.internal_name, :version => new_ver }
+        end
+      end
+
+    end
+  end
+
+  # generate CSV report
   csv_string = CSV.generate do |csv|
     csv << ([ 'Attr', 'Name','Version', 'Coverage' ] + updaters.map(&:name))
 
@@ -128,21 +165,28 @@ elsif action == :check_updates
       report_line << updaters.map{ |updater| (updater.covers?(pkg) ? 1 : 0) }.reduce(0, :+)
 
       updaters.each do |updater|
-        new_ver = updater.newest_version_of pkg
-        puts "#{pkg.internal_name}/#{pkg.name}:#{pkg.version} has new version #{new_ver} according to #{updater.name}" if new_ver
-        report_line << new_ver
+        record = DB[updater.friendly_name][:pkg_attr => pkg.internal_name]
+        report_line << ( record ? record[:version] : nil )
       end
 
       csv << report_line
     end
-
   end
   File.write(csv_report_file, csv_string) if csv_report_file
 
 elsif action == :check_pkg_version_match
 
-  DistroPackage::Nix.packages.each do |pkg|
-    puts pkg.serialize unless Updater.versions_match?(pkg)
+  DB.transaction do
+    DB.create_table!(:version_mismatch) do
+      String :pkg_attr, :unique => true, :primary_key => true
+    end
+
+    DistroPackage::Nix.packages.each do |pkg|
+      unless Updater.versions_match?(pkg)
+        puts pkg.serialize 
+        DB[:version_mismatch] << pkg.internal_name
+      end
+    end
   end
 
 elsif action == :find_unmatched_advisories
