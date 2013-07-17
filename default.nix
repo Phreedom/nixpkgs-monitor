@@ -1,6 +1,12 @@
 let
-  pkgs = import <nixpkgs> {};
 
+  pkgs = import <nixpkgs> {
+    config = {
+      gems.generated = import ./gems.nix;
+    };
+  };
+
+  required_gems = with pkgs.rubyLibs; [ mechanize sequel sqlite3 ];
 in
 with pkgs;
 stdenv.mkDerivation {
@@ -10,13 +16,12 @@ stdenv.mkDerivation {
 
   buildInputs = [ rubygems ruby makeWrapper ];
 
-  requiredUserEnvPkgs = [ rubyLibs.mechanize ];
-  propagatedBuildInputs = [ rubyLibs.mechanize ];
+
+  requiredUserEnvPkgs = required_gems;
+  propagatedBuildInputs = required_gems;
 
   installPhase = ''
-
     addToSearchPath GEM_PATH $out/${ruby.gemPath}
-echo $GEM_PATH
 
     export gemlibpath=$out/lib/
     ensureDir $gemlibpath
