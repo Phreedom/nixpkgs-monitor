@@ -74,7 +74,7 @@ OptionParser.new do |o|
 
   o.on("--check-updates", "list NixPkgs packages which have updates available") do
     action = :check_updates
-    pkgs_to_check += DistroPackage::Nix.list.values
+    pkgs_to_check += DistroPackage::Nix.packages
   end
 
   o.on("--check-package PACKAGE", "Check what updates are available for PACKAGE") do |pkgname|
@@ -98,11 +98,10 @@ OptionParser.new do |o|
   o.parse(ARGV)
 end
 
-
 if action == :coverage
 
   coverage = {}
-  DistroPackage::Nix.list.each_value do |pkg|
+  DistroPackage::Nix.packages.each do |pkg|
     coverage[pkg] = updaters.map{ |updater| (updater.covers?(pkg) ? 1 : 0) }.reduce(0, :+)
   end
 
@@ -142,7 +141,7 @@ elsif action == :check_updates
 
 elsif action == :check_pkg_version_match
 
-  DistroPackage::Nix.list.each_value do |pkg|
+  DistroPackage::Nix.packages.each do |pkg|
     puts pkg.serialize unless Updater.versions_match?(pkg)
   end
 

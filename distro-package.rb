@@ -50,6 +50,11 @@ module DistroPackage
     end
 
 
+    def self.packages
+      list.values
+    end
+
+
     def self.serialize_list(list)
       file = File.open(cache_file_name, "w")
       list.each_value do |package|
