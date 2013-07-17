@@ -107,6 +107,7 @@ OptionParser.new do |o|
 end
 
 DB = Sequel.sqlite(db_path)
+DistroPackage::DB = DB
 
 distros_to_update.each do |distro|
   log.debug distro.generate_list.inspect

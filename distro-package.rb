@@ -1,5 +1,7 @@
 module DistroPackage
 
+  DB = nil
+
   # Generic distro package
   class Package
     attr_accessor :internal_name, :name, :version, :url
@@ -14,21 +16,22 @@ module DistroPackage
 
 
     def serialize
-      return "#{@internal_name} #{@name} #{@version} #{@url}"
+      return {
+        :internal_name =>@internal_name,
+        :name => @name,
+        :version => @version,
+        :url => @url
+      }
     end
 
 
     def self.deserialize(val)
-      if val =~/(\S*) (\S*) (\S*) (\S*)/
-        return new($1, $2, $3, $4)
-      else
-        raise" failed to parse #{val}"
-      end
+      new(val[:internal_name], val[:name], val[:version], val[:url])
     end
 
 
-    def self.cache_file_name
-      "#{@cache_name}.cache"
+    def self.table_name
+      "packages_#{@cache_name}".to_sym
     end
 
 
@@ -36,13 +39,13 @@ module DistroPackage
       unless @list
         @list = {}
 
-        if File.exists? cache_file_name
-          File.readlines(cache_file_name, :encoding => "UTF-8").each do |line|
-            package = deserialize(line)
+        if DB.table_exists?(table_name)
+          DB[table_name].each do |record|
+            package = deserialize(record)
             @list[package.name] = package
           end
         else
-          STDERR.puts "#{cache_file_name} doesn't exist"
+          STDERR.puts "#{table_name} doesn't exist"
         end
       end
 
@@ -55,12 +58,23 @@ module DistroPackage
     end
 
 
-    def self.serialize_list(list)
-      file = File.open(cache_file_name, "w")
-      list.each_value do |package|
-        file.puts package.serialize
+    def self.create_table(db)
+      db.create_table!(table_name) do
+        String :internal_name, :unique => true, :primary_key => true
+        String :name
+        String :version
+        String :url
       end
-      file.close
+    end
+
+
+    def self.serialize_list(list)
+      DB.transaction do
+        create_table(DB)
+        list.values.each do |package|
+          DB[table_name] << package.serialize
+        end
+      end
     end
 
 
@@ -214,20 +228,28 @@ module DistroPackage
     end
 
 
+    def self.create_table(db)
+      db.create_table!(table_name) do
+        String :internal_name, :unique => true, :primary_key => true
+        String :name
+        String :version
+        String :url
+        String :version_overlay
+        String :version_upstream
+      end
+    end
+
+
     def serialize
-      return "#{super} #{@version_overlay} #{@version_upstream}"
+      return super.merge({:version_overlay => @version_overlay, :version_upstream => @version_upstream})
     end
 
 
     def self.deserialize(val)
-      if val =~/(\S*) (\S*) (\S*) (\S*) (\S*) (\S*)/
-        pkg = Gentoo.new($1, $2, $3, $4)
-        pkg.version_overlay = $5
-        pkg.version_upstream = $6
-        return pkg
-      else
-        raise " failed to parse #{val}"
-      end
+      pkg = super(val)
+      pkg.version_overlay = val[:version_overlay]
+      pkg.version_upstream = val[:version_upstream]
+      return pkg
     end
 
 

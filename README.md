@@ -18,10 +18,12 @@ Reports look somewhat ugly.
 
 ### database
 
-updatetool.rb puts coverage, version mismatch and updater reports into a database(db.sqlite).
+updatetool.rb puts package cache, coverage, version mismatch and updater reports into a database(db.sqlite).
 
 Coverage report is in estimated_coverage table, version mismatch report is in
 version_mismatch table and updater reports are in repository_* and distro_* tables.
+
+Package caches are in packages_* tables.
 
 ## comparepackages.rb
 
