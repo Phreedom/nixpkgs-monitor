@@ -41,29 +41,31 @@ updaters = [
              Distro::AUR, # +
 ]
 
+distros_to_update = []
+
 OptionParser.new do |o|
   o.on("-v", "Verbose output. Can be specified multiple times") do
     log.level -= 1
   end
 
   o.on("--list-arch", "List Arch packages") do
-    log.debug DistroPackage::Arch.generate_list.inspect
+    distros_to_update << DistroPackage::Arch
   end
 
   o.on("--list-aur", "List AUR packages") do
-    log.debug DistroPackage::AUR.generate_list.inspect
+    distros_to_update << DistroPackage::AUR
   end
 
   o.on("--list-nix", "List nixpkgs packages") do
-    log.debug DistroPackage::Nix.generate_list.inspect
+    distros_to_update << DistroPackage::Nix
   end
 
   o.on("--list-deb", "List Debian packages") do
-    log.debug DistroPackage::Debian.generate_list.inspect
+    distros_to_update << DistroPackage::Debian
   end
 
   o.on("--list-gentoo", "List Gentoo packages") do
-    log.debug DistroPackage::Gentoo.generate_list.inspect
+    distros_to_update << DistroPackage::Gentoo
   end
 
   o.on("--output-csv FILE", "Write report in CSV format to FILE") do |f|
@@ -105,6 +107,10 @@ OptionParser.new do |o|
 end
 
 DB = Sequel.sqlite(db_path)
+
+distros_to_update.each do |distro|
+  log.debug distro.generate_list.inspect
+end
 
 if action == :coverage
 
