@@ -4,14 +4,15 @@ module DistroPackage
 
   # Generic distro package
   class Package
-    attr_accessor :internal_name, :name, :version, :url
+    attr_accessor :internal_name, :name, :version, :url, :revision
 
 
-    def initialize(internal_name, name = internal_name, version = '0', url = "" )
+    def initialize(internal_name, name = internal_name, version = '0', url = "", revision = "" )
       @internal_name = internal_name
       @name = name.downcase
       @version = version
       @url = url
+      @revision = ( revision ? revision : "" )
     end
 
 
@@ -20,13 +21,14 @@ module DistroPackage
         :internal_name =>@internal_name,
         :name => @name,
         :version => @version,
-        :url => @url
+        :url => @url,
+        :revision => @revision
       }
     end
 
 
     def self.deserialize(val)
-      new(val[:internal_name], val[:name], val[:version], val[:url])
+      new(val[:internal_name], val[:name], val[:version], val[:url], val[:revision])
     end
 
 
@@ -64,6 +66,7 @@ module DistroPackage
         String :name
         String :version
         String :url
+        String :revision
       end
     end
 
@@ -319,18 +322,24 @@ module DistroPackage
 
     def self.instantiate(attr, name)
       url = 'none'
-      if nixpkgs_get_attr("#{attr}.src.urls") =~ /string value="([^"]*)"/
-        url = $1
-      else 
-        puts "failed to get url for #{attr} #{name}"
+      rev = nil
+      unless /string value="(?<url>[^"]*)"/ =~ nixpkgs_get_attr("#{attr}.src.urls")
+        puts "maybe #{attr} #{name} fetches sources from a VCS?"
+
+        unless /string value="(?<rev>[^"]*)"/ =~ nixpkgs_get_attr("#{attr}.src.rev") and
+               /string value="(?<url>[^"]*)"/ =~ nixpkgs_get_attr("#{attr}.src.url")
+          puts "failed to find sources for #{attr} #{name}"
+        end
       end
 
       if name =~ /(.*?)-([^A-Za-z].*)/
-        return Nix.new(attr, $1, $2, url)
+        result =  Nix.new(attr, $1, $2, url, rev)
       else
         puts "failed to parse name for #{attr} #{name}"
-        return Nix.new(attr, name, "", url)
+        result = Nix.new(attr, name, "", url, rev)
       end
+
+      return result
     end
 
 
