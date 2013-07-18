@@ -21,7 +21,10 @@ PackageUpdater::Log = log
 csv_report_file = nil
 action = nil
 pkgs_to_check = []
+
 db_path = './db.sqlite'
+DB = Sequel.sqlite(db_path)
+DistroPackage::DB = DB
 
 updaters = [ 
              Repository::CPAN, # + not too horrible
@@ -72,10 +75,6 @@ OptionParser.new do |o|
     csv_report_file = f
   end
 
-  o.on("--db DB_PATH", "Change default DB path to DB_PATH") do |new_db_path|
-    db_path = new_db_path
-  end
-
   o.on("--check-pkg-version-match", "List Nix packages for which either tarball can't be parsed or its version doesn't match the package version") do
     action = :check_pkg_version_match
   end
@@ -105,9 +104,6 @@ OptionParser.new do |o|
 
   o.parse(ARGV)
 end
-
-DB = Sequel.sqlite(db_path)
-DistroPackage::DB = DB
 
 distros_to_update.each do |distro|
   log.debug distro.generate_list.inspect
