@@ -541,7 +541,7 @@ module PackageUpdater
                 split("\n").select{|s| s.include? "refs/tags/" and not(s.include? "^{}")}.
                 map{|s| s =~ %r{refs/tags.*/v?(\S*?)$}; $1 }
         versions = tags.map do |tag|
-          if tag =~ /^(v\d|\d)/
+          if tag =~ /^[vr]?\d/
             tag
           else
             (name, version) = parse_tarball_name(tag)
