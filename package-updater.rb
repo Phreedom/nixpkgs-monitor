@@ -524,6 +524,39 @@ module PackageUpdater
 
     end
 
+    # Handles GitHub-provided tarballs.
+    # Queries git repo for tags. Tries to handle the tag as a tarball name.
+    # if parsing it as a tarball fails, treats it as a version.
+    class GitHub < Updater
+
+      def self.covers?(pkg)
+        return( pkg.url  =~ %r{^https?://github.com/} and usable_version?(pkg.version) )
+      end
+
+      def self.newest_version_of(pkg)
+        return nil unless %r{^https?://github.com/(?:downloads/)?(?<owner>[^/]*)/(?<repo>[^/]*)/} =~ pkg.url
+        return nil unless usable_version?(pkg.version)
+
+        tags = %x(GIT_ASKPASS="echo" SSH_ASKPASS= git ls-remote https://github.com/#{owner}/#{repo}.git< /dev/null).
+                split("\n").select{|s| s.include? "refs/tags/" and not(s.include? "^{}")}.
+                map{|s| s =~ %r{refs/tags.*/v?(\S*?)$}; $1 }
+        versions = tags.map do |tag|
+          if tag =~ /^(v\d|\d)/
+            tag
+          else
+            (name, version) = parse_tarball_name(tag)
+            (version ? version : tag)
+          end
+        end
+
+        max_version = versions.reduce(pkg.version) do |v1, v2|
+          ( usable_version?(v2) and is_newer?(v2, v1) ) ? v2 : v1
+        end
+        return (max_version != pkg.version ? max_version : nil)
+      end
+
+    end
+
 
     class XFCE < Updater
     end
