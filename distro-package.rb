@@ -306,6 +306,10 @@ module DistroPackage
     def version
       result = @version.gsub(/-profiling$/, "").gsub(/-gimp-2.6.\d+-plugin$/,"")
       result.gsub!(/-3\.9\.\d$/,"") if internal_name.include? 'linuxPackages'
+      result = result.gsub(/-gui$/,"").gsub(/-single$/,"").gsub(/-with-X$/,"")
+      result = result.gsub(/-with-svn$/,"").gsub(/-full$/,"").gsub(/-client$/,"")
+      result = result.gsub(/-daemon$/,"").gsub(/-static$/,"").gsub(/-binary$/,"")
+      result = result.gsub(/-with-perl$/,"")
       return result
     end
 
@@ -315,7 +319,9 @@ module DistroPackage
 
     def self.instantiate(attr, name)
       url = 'none'
-      unless /string value="(?<url>[^"]*)"/ =~ nixpkgs_get_attr("#{attr}.src.urls")
+      if nixpkgs_get_attr("#{attr}.src.urls") =~ /string value="([^"]*)"/
+        url = $1
+      else 
         puts "failed to get url for #{attr} #{name}"
       end
 
