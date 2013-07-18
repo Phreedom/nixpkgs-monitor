@@ -214,9 +214,13 @@ module PackageUpdater
 
 
   class GentooDistfiles < Updater
-    # no cheap way to find out right now, so be conservative
+
     def self.covers?(pkg)
-      false
+      return false unless %r{/(?<file>[^/]*)$} =~ pkg.url
+      (package_name, file_version) = parse_tarball_name(file)
+
+      return( package_name and file_version  and distfiles[package_name] and
+              usable_version?(pkg.version) and usable_version?(file_version) )
     end
 
     def self.distfiles
