@@ -309,12 +309,13 @@ module DistroPackage
       return result
     end
 
+    def self.nixpkgs_get_attr(attr)
+      %x(nix-instantiate --eval-only --xml --strict -A #{attr} ./nixpkgs/)
+    end
 
     def self.instantiate(attr, name)
       url = 'none'
-      if %x(nix-instantiate --eval-only --xml --strict -A #{attr}.src.urls ./nixpkgs/) =~ /string value="([^"]*)"/
-        url = $1
-      else 
+      unless /string value="(?<url>[^"]*)"/ =~ nixpkgs_get_attr("#{attr}.src.urls")
         puts "failed to get url for #{attr} #{name}"
       end
 
@@ -322,7 +323,7 @@ module DistroPackage
         return Nix.new(attr, $1, $2, url)
       else
         puts "failed to parse name for #{attr} #{name}"
-        return nil
+        return Nix.new(attr, name, "", url)
       end
     end
 
