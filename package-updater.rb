@@ -142,7 +142,6 @@ module PackageUpdater
     end
 
 
-    # TODO: refactor: put version cleanup and matching code somewhere else
     def self.new_tarball_version(pkg, tarballs)
       url = pkg.url;
       if url =~ %r{/([^/]*)$}
@@ -151,9 +150,7 @@ module PackageUpdater
 
         if file_version and package_name and true # test only
           v1 = file_version.downcase
-          # removes haskell suffix, gimp plugin suffix and FIXME: linux version
-          # FIXME: linux version removal breaks a couple of matches
-          v2 = pkg.version.downcase.gsub(/-3\.9\.7$/,"")
+          v2 = pkg.version.downcase
           return nil unless versions_match?(pkg)
 
           package_name = package_name.downcase
