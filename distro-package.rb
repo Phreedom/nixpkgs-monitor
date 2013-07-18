@@ -279,6 +279,20 @@ module DistroPackage
       return gentoo_list
     end
 
+
+    def self.match_nixpkg(pkg)
+      match = list[pkg.name]
+      return match if match
+      match = list[pkg.name.gsub(/^ruby-/,"")]
+      return match if match
+      match = list[pkg.name.gsub(/^python-/,"")]
+      return match if match
+      match = list[pkg.name.gsub(/^perl-/,"")]
+      return match if match
+      match = list[pkg.name.gsub(/^haskell-(.*)-ghc\d+\.\d+\.\d+$/,'\1')]
+      return match if match
+    end
+
   end
 
 

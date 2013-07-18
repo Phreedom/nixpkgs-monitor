@@ -588,11 +588,11 @@ module PackageUpdater
     class Gentoo < Updater
 
       def self.covers?(pkg)
-        return ( DistroPackage::Gentoo.list[pkg.name] and usable_version?(pkg.version) )
+        return ( DistroPackage::Gentoo.match_nixpkg(pkg) and usable_version?(pkg.version) )
       end
 
       def self.newest_version_of(pkg)
-        gentoo_pkg = DistroPackage::Gentoo.list[pkg.name]
+        gentoo_pkg = DistroPackage::Gentoo.match_nixpkg(pkg)
         return nil unless gentoo_pkg
         return nil unless usable_version?(gentoo_pkg.version) and usable_version?(pkg.version)
         return ( is_newer?(gentoo_pkg.version, pkg.version) ? gentoo_pkg.version : nil)
