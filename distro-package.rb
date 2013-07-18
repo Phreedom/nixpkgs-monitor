@@ -291,6 +291,7 @@ module DistroPackage
       return match if match
       match = list[pkg.name.gsub(/^haskell-(.*)-ghc\d+\.\d+\.\d+$/,'\1')]
       return match if match
+      return nil
     end
 
   end
@@ -353,10 +354,8 @@ module DistroPackage
   class Debian < Package
     @cache_name = "debian"
 
-    def self.normalize_name(name)
-      result = name    
-      result = "xf86-#{$1}" if name =~ /xserver-xorg-(.*)/
-      return result
+    def version
+      result = @version.sub(/^\d:/,"").sub(/-\d$/,"").sub(/\+dfsg.*$/,"")
     end
 
 
@@ -374,12 +373,41 @@ module DistroPackage
         pkg_version = $1 if pkgmeta =~ /Version:\s*(.*)/
         if pkg_name and pkg_version
           package = Debian.new(pkg_name, pkg_name, pkg_version, 'none')
-          deb_list[Debian.normalize_name(package.name)] = package if package
+          deb_list[package.name] = package if package
         end
       end
 
       serialize_list(deb_list)
       return deb_list
+    end
+
+
+    def self.match_nixpkg(pkg)
+      match = list[pkg.name]
+      return match if match
+#       match = list[pkg.name.gsub(/^ruby-/,"")]
+#       return match if match
+      match = list[pkg.name.gsub(/^python-/,"")]
+      return match if match
+      match = list[pkg.name.gsub(/^perl-(.*)$/,'lib\1-perl')]
+      return match if match
+      match = list[pkg.name.gsub(/^(haskell-.*)-ghc\d+\.\d+\.\d+$/,'\1')]
+      return match if match
+      match = list[pkg.name.gsub(/^xf86-(.*)$/,'xserver-xorg-\1')]
+      return match if match
+      match = list[pkg.name+"1"]
+      return match if match
+      match = list[pkg.name+"2"]
+      return match if match
+      match = list[pkg.name+"3"]
+      return match if match
+      match = list[pkg.name+"4"]
+      return match if match
+      match = list[pkg.name+"5"]
+      return match if match
+      match = list[pkg.name+"6"]
+      return match if match
+      return nil
     end
 
   end

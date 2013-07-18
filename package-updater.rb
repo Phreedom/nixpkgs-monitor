@@ -571,11 +571,11 @@ module PackageUpdater
     class Debian < Updater
 
       def self.covers?(pkg)
-        return ( DistroPackage::Debian.list[pkg.name] and usable_version?(pkg.version) )
+        return ( DistroPackage::Debian.match_nixpkg(pkg) and usable_version?(pkg.version) )
       end
 
       def self.newest_version_of(pkg)
-        deb_pkg = DistroPackage::Debian.list[pkg.name]
+        deb_pkg = DistroPackage::Debian.match_nixpkg(pkg)
         return nil unless deb_pkg
         return nil unless usable_version?(deb_pkg.version) and usable_version?(pkg.version)
         return ( is_newer?(deb_pkg.version, pkg.version) ? deb_pkg.version : nil)
