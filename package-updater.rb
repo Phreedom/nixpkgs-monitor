@@ -535,20 +535,13 @@ module PackageUpdater
     end
 
 
-    # Handles GitHub-provided tarballs.
-    # Queries git repo for tags. Tries to handle the tag as a tarball name.
-    # if parsing it as a tarball fails, treats it as a version.
-    class GitHub < Updater
+    # Generic git-based updater. Discovers new versions using git repository tags.
+    class GitUpdater < Updater
 
-      def self.covers?(pkg)
-        return( pkg.url  =~ %r{^https?://github.com/} and usable_version?(pkg.version) )
-      end
-
-      def self.newest_version_of(pkg)
-        return nil unless %r{^https?://github.com/(?:downloads/)?(?<owner>[^/]*)/(?<repo>[^/]*)/} =~ pkg.url
-        return nil unless usable_version?(pkg.version)
-
-        tags = %x(GIT_ASKPASS="echo" SSH_ASKPASS= git ls-remote https://github.com/#{owner}/#{repo}.git< /dev/null).
+      # Queries git repo for tags. Tries to handle the tag as a tarball name.
+      # if parsing it as a tarball fails, treats it as a version.
+      def self.git_versions(repo)
+        tags = %x(GIT_ASKPASS="echo" SSH_ASKPASS= git ls-remote #{repo}).
                 split("\n").select{|s| s.include? "refs/tags/" and not(s.include? "^{}")}.
                 map{|s| s =~ %r{refs/tags.*/v?(\S*?)$}; $1 }
         versions = tags.map do |tag|
@@ -559,6 +552,47 @@ module PackageUpdater
             (version ? version : tag)
           end
         end
+
+        return versions
+      end
+
+    end
+
+
+    class GitUpdater < Updater
+
+      def self.git_versions(repo)
+        tags = %x(GIT_ASKPASS="echo" SSH_ASKPASS= git ls-remote #{repo}).
+                split("\n").select{|s| s.include? "refs/tags/" and not(s.include? "^{}")}.
+                map{|s| s =~ %r{refs/tags.*/v?(\S*?)$}; $1 }
+        versions = tags.map do |tag|
+          if tag =~ /^[vr]?\d/
+            tag
+          else
+            (name, version) = parse_tarball_name(tag)
+            (version ? version : tag)
+          end
+        end
+
+        return versions
+      end
+
+    end
+
+
+    # Handles GitHub-provided tarballs.
+    class GitHub < GitUpdater
+
+      def self.covers?(pkg)
+        return( pkg.url and pkg.url  =~ %r{^https?://github.com/} and usable_version?(pkg.version) )
+      end
+
+      def self.newest_version_of(pkg)
+        return nil unless pkg.url
+        return nil unless %r{^https?://github.com/(?:downloads/)?(?<owner>[^/]*)/(?<repo>[^/]*)/} =~ pkg.url
+        return nil unless usable_version?(pkg.version)
+
+        versions = git_versions("https://github.com/#{owner}/#{repo}.git")
 
         max_version = versions.reduce(pkg.version) do |v1, v2|
           ( usable_version?(v2) and is_newer?(v2, v1) ) ? v2 : v1
