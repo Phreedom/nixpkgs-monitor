@@ -277,6 +277,7 @@ module PackageUpdater
       end
 
       def self.newest_version_of(pkg)
+        return nil unless pkg.url
         url = pkg.url;
         return nil unless url =~ %r{^mirror://sourceforge/(?:project/)?([^/]+).*?/([^/]+)$}
         sf_project = $1
@@ -292,10 +293,11 @@ module PackageUpdater
     class NPMJS < Updater
 
       def self.covers?(pkg)
-        return( pkg.url.start_with?("http://registry.npmjs.org/") and usable_version?(pkg.version) )
+        return( pkg.url and pkg.url.start_with?("http://registry.npmjs.org/") and usable_version?(pkg.version) )
       end
 
       def self.newest_version_of(pkg)
+        return nil unless pkg.url
         return nil unless %r{http://registry.npmjs.org/(?<pkgname>[^\/]*)/} =~ pkg.url
         metadata = JSON.parse(http_agent.get("http://registry.npmjs.org/#{pkgname}/").body)
         new_ver = metadata["dist-tags"]["latest"]
@@ -340,10 +342,11 @@ module PackageUpdater
       end
 
       def self.covers?(pkg)
-        return( pkg.url.start_with? 'mirror://cpan/' and usable_version?(pkg.version) )
+        return( pkg.url and pkg.url.start_with? 'mirror://cpan/' and usable_version?(pkg.version) )
       end
 
       def self.newest_version_of(pkg)
+        return nil unless pkg.url
         if pkg.url.start_with? 'mirror://cpan/'
           return new_tarball_version(pkg, tarballs)
         end
@@ -356,10 +359,11 @@ module PackageUpdater
     class RubyGems < Updater
 
       def self.covers?(pkg)
-        return( pkg.url.include? 'rubygems.org/downloads/' and usable_version?(pkg.version) )
+        return( pkg.url and pkg.url.include? 'rubygems.org/downloads/' and usable_version?(pkg.version) )
       end
 
       def self.newest_version_of(pkg)
+        return nil unless pkg.url
         return nil unless pkg.url.include? 'rubygems.org/downloads/'
         return nil unless pkg.url =~ %r{/([^/]*)$}
         file = $1
@@ -398,10 +402,11 @@ module PackageUpdater
       end
 
       def self.covers?(pkg)
-        return( pkg.url.start_with? 'http://hackage.haskell.org/' and usable_version?(pkg.version) )
+        return( pkg.url and pkg.url.start_with? 'http://hackage.haskell.org/' and usable_version?(pkg.version) )
       end
 
       def self.newest_version_of(pkg)
+        return nil unless pkg.url
         if pkg.url.start_with? 'http://hackage.haskell.org/'
           return new_tarball_version(pkg, tarballs)
         end
@@ -418,6 +423,7 @@ module PackageUpdater
       end
 
       def self.newest_version_of(pkg)
+        return nil unless pkg.url
         return nil unless pkg.url =~ %r{^https?://pypi.python.org(/packages/source/./[^/]*/)[^/]*$}
         path = $1
         tarballs = tarballs_from_dir("http://pypi.python.org#{path}")
@@ -431,10 +437,11 @@ module PackageUpdater
     class GNU < Updater
 
       def self.covers?(pkg)
-        return( pkg.url =~ %r{^mirror://gnu(/[^/]*)/[^/]*$} and usable_version?(pkg.version) )
+        return( pkg.url and pkg.url =~ %r{^mirror://gnu(/[^/]*)/[^/]*$} and usable_version?(pkg.version) )
       end
 
       def self.newest_version_of(pkg)
+        return nil unless pkg.url
         return nil unless pkg.url =~ %r{^mirror://gnu(/[^/]*)/[^/]*$}
         path = $1
         tarballs = tarballs_from_dir("http://ftpmirror.gnu.org#{path}")
@@ -456,10 +463,11 @@ module PackageUpdater
       end
 
       def self.covers?(pkg)
-        return (pkg.url.start_with? "mirror://xorg/" and usable_version?(pkg.version) )
+        return( pkg.url and pkg.url.start_with? "mirror://xorg/" and usable_version?(pkg.version) )
       end
 
       def self.newest_version_of(pkg)
+        return nil unless pkg.url
         return nil unless pkg.url.start_with? "mirror://xorg/"
         return new_tarball_version(pkg, tarballs)
       end
@@ -496,10 +504,11 @@ module PackageUpdater
       end
 
       def self.covers?(pkg)
-        return( pkg.url.start_with? 'mirror://kde/stable/' and usable_version?(pkg.version) )
+        return( pkg.url and pkg.url.start_with? 'mirror://kde/stable/' and usable_version?(pkg.version) )
       end
 
       def self.newest_version_of(pkg)
+        return nil unless pkg.url
         if pkg.url.start_with? 'mirror://kde/stable/'
           return new_tarball_version(pkg, tarballs)
         end
@@ -512,10 +521,11 @@ module PackageUpdater
     class GNOME < Updater
 
       def self.covers?(pkg)
-        return( pkg.url =~ %r{^mirror://gnome(/sources/[^/]*/)[^/]*/[^/]*$} and usable_version?(pkg.version) )
+        return( pkg.url and pkg.url =~ %r{^mirror://gnome(/sources/[^/]*/)[^/]*/[^/]*$} and usable_version?(pkg.version) )
       end
 
       def self.newest_version_of(pkg)
+        return nil unless pkg.url
         return nil unless pkg.url =~ %r{^mirror://gnome(/sources/[^/]*/)[^/]*/[^/]*$}
         path = $1
         tarballs =  JSON.parse(http_agent.get("http://download.gnome.org#{path}cache.json").body)[2]
@@ -523,6 +533,7 @@ module PackageUpdater
       end
 
     end
+
 
     # Handles GitHub-provided tarballs.
     # Queries git repo for tags. Tries to handle the tag as a tarball name.
