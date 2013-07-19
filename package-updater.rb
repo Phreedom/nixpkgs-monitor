@@ -583,8 +583,8 @@ module PackageUpdater
 
         repo_contents = ls_remote(pkg.url).select{|s| s.include?("refs/tags") or s.include?("refs/heads/master") }
         tag_line = repo_contents.index{|line| line.include? pkg.revision }
-        #puts "for #{pkg.revision} found #{tag_line} and parsed as #{current_version}"
-        puts "for #{pkg.revision} found #{tag_line}"
+        
+        log.debug "for #{pkg.revision} found #{tag_line}"
         if tag_line # revision refers to a tag?
 
           current_version = tag_to_version(repo_contents[tag_line])
@@ -606,7 +606,7 @@ module PackageUpdater
         master_line = repo_contents.index{|line| line.include? "refs/heads/master" }
         if master_line
           /^(?<master_commit>\S*)/ =~ repo_contents[master_line]
-          log.warn "new master commit #{master_commit} for #{pkg.name}:#{pkg.revision}"
+          log.info "new master commit #{master_commit} for #{pkg.name}:#{pkg.revision}"
           return( master_commit.start_with?(pkg.revision) ? nil : master_commit )
         else
           log.warn "failed to find master for #{pkg.name}"
