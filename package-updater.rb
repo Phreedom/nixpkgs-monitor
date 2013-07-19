@@ -538,43 +538,81 @@ module PackageUpdater
     # Generic git-based updater. Discovers new versions using git repository tags.
     class GitUpdater < Updater
 
-      # Queries git repo for tags. Tries to handle the tag as a tarball name.
+      def self.ls_remote(repo)
+        %x(GIT_ASKPASS="echo" SSH_ASKPASS= git ls-remote #{repo}).split("\n")
+          #select{|s| not(s.include? "^{}")}
+      end
+
+      # Tries to handle the tag as a tarball name.
       # if parsing it as a tarball fails, treats it as a version.
-      def self.git_versions(repo)
-        tags = %x(GIT_ASKPASS="echo" SSH_ASKPASS= git ls-remote #{repo}).
-                split("\n").select{|s| s.include? "refs/tags/" and not(s.include? "^{}")}.
-                map{|s| s =~ %r{refs/tags.*/v?(\S*?)$}; $1 }
-        versions = tags.map do |tag|
+      def self.tag_to_version(tag_line)
+        if %r{refs/tags.*/[vr]?(?<tag>\S*?)(\^\{\})?$} =~ tag_line
           if tag =~ /^[vr]?\d/
-            tag
+            return tag
           else
             (name, version) = parse_tarball_name(tag)
-            (version ? version : tag)
+            return (version ? version : tag)
           end
+        else
+          return nil
         end
+      end
 
-        return versions
+      def self.repo_contents_to_tags(repo_contents)
+        tags = repo_contents.select{ |s| s.include? "refs/tags/" }
+        return tags.map{ |tag| tag_to_version(tag) }
       end
 
     end
 
 
-    class GitUpdater < Updater
+    # Handles fetchgit-based packages.
+    # Tries to detect which tag the current revision corresponds to.
+    # Otherwise assumes the package is tracking master because
+    # there's no easy way to be smarter without checking out the repository.
+    # Tries to find a newer tag or if tracking master, newest commit.
+    class FetchGit < GitUpdater
 
-      def self.git_versions(repo)
-        tags = %x(GIT_ASKPASS="echo" SSH_ASKPASS= git ls-remote #{repo}).
-                split("\n").select{|s| s.include? "refs/tags/" and not(s.include? "^{}")}.
-                map{|s| s =~ %r{refs/tags.*/v?(\S*?)$}; $1 }
-        versions = tags.map do |tag|
-          if tag =~ /^[vr]?\d/
-            tag
+      def self.covers?(pkg)
+        return( pkg.url and pkg.revision != "" and pkg.url.include? "git" )
+      end
+
+
+      def self.newest_version_of(pkg)
+        return nil unless covers?(pkg)
+
+        repo_contents = ls_remote(pkg.url).select{|s| s.include?("refs/tags") or s.include?("refs/heads/master") }
+        tag_line = repo_contents.index{|line| line.include? pkg.revision }
+        #puts "for #{pkg.revision} found #{tag_line} and parsed as #{current_version}"
+        puts "for #{pkg.revision} found #{tag_line}"
+        if tag_line # revision refers to a tag?
+
+          current_version = tag_to_version(repo_contents[tag_line])
+          
+          if current_version and usable_version?(current_version)
+
+            versions = repo_contents_to_tags(repo_contents)
+            max_version = versions.reduce(current_version) do |v1, v2|
+              ( usable_version?(v2) and is_newer?(v2, v1) ) ? v2 : v1
+            end
+            return (max_version != current_version ? max_version : nil)
+
           else
-            (name, version) = parse_tarball_name(tag)
-            (version ? version : tag)
+            log.warn "failed to parse tag #{repo_contents[tag_line]} for #{pkg.name}. Assuming tracking master"
           end
         end
 
-        return versions
+        # assuming tracking master
+        master_line = repo_contents.index{|line| line.include? "refs/heads/master" }
+        if master_line
+          /^(?<master_commit>\S*)/ =~ repo_contents[master_line]
+          log.warn "new master commit #{master_commit} for #{pkg.name}:#{pkg.revision}"
+          return( master_commit.start_with?(pkg.revision) ? nil : master_commit )
+        else
+          log.warn "failed to find master for #{pkg.name}"
+          return nil
+        end
+
       end
 
     end
@@ -584,16 +622,16 @@ module PackageUpdater
     class GitHub < GitUpdater
 
       def self.covers?(pkg)
-        return( pkg.url and pkg.url  =~ %r{^https?://github.com/} and usable_version?(pkg.version) )
+        return( pkg.url and not(pkg.revision) and pkg.url  =~ %r{^https?://github.com/} and usable_version?(pkg.version) )
       end
 
       def self.newest_version_of(pkg)
         return nil unless pkg.url
+        return nil if pkg.revision
         return nil unless %r{^https?://github.com/(?:downloads/)?(?<owner>[^/]*)/(?<repo>[^/]*)/} =~ pkg.url
         return nil unless usable_version?(pkg.version)
 
-        versions = git_versions("https://github.com/#{owner}/#{repo}.git")
-
+        versions = repo_contents_to_tags( ls_remote( "https://github.com/#{owner}/#{repo}.git" ) )
         max_version = versions.reduce(pkg.version) do |v1, v2|
           ( usable_version?(v2) and is_newer?(v2, v1) ) ? v2 : v1
         end

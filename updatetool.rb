@@ -38,6 +38,7 @@ updaters = [
              Repository::GNU,# + produces lots of warning trash
              Repository::SF, # + lots of trash I can't avoid 
              Repository::NPMJS,
+             Repository::FetchGit,
              Repository::GitHub,
              GentooDistfiles, # +
              Distro::Arch, # +
