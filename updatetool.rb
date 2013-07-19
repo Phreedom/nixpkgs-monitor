@@ -137,6 +137,9 @@ if action == :coverage
   notcovered = coverage.keys.select { |pkg| coverage[pkg] <=0 }
   puts "Covered #{covered.count} packages: #{covered.map{|pkg| "#{pkg.name} #{coverage[pkg]}"}.inspect}"
   puts "Not covered #{notcovered.count} packages: #{notcovered.map{|pkg| "#{pkg.name}:#{pkg.version}"}.inspect}"
+  hard_to_cover = notcovered.select{ |pkg| pkg.url == nil or pkg.url == "" or pkg.url == "none" }
+  puts "Hard to cover #{hard_to_cover.count} packages: #{hard_to_cover.map{|pkg| "#{pkg.name}:#{pkg.version}"}.inspect}"
+
 
 elsif action == :check_updates
 
