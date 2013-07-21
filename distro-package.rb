@@ -239,6 +239,7 @@ module DistroPackage
         String :url
         String :version_overlay
         String :version_upstream
+        String :revision
       end
     end
 
