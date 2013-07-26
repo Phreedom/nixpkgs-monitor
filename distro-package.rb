@@ -1,3 +1,5 @@
+require 'nokogiri'
+
 module DistroPackage
 
   DB = nil
@@ -40,11 +42,13 @@ module DistroPackage
     def self.list
       unless @list
         @list = {}
+        @by_internal_name = {}
 
         if DB.table_exists?(table_name)
           DB[table_name].each do |record|
             package = deserialize(record)
             @list[package.name] = package
+            @by_internal_name[package.internal_name] = package
           end
         else
           STDERR.puts "#{table_name} doesn't exist"
@@ -57,6 +61,14 @@ module DistroPackage
 
     def self.packages
       list.values
+    end
+
+
+    def self.by_internal_name
+      unless @by_internal_name
+        list
+      end
+      return @by_internal_name
     end
 
 
@@ -305,6 +317,7 @@ module DistroPackage
   # which break matching because nixpks keeps only 1 of the packages
   # with the same name
   class Nix < Package
+    attr_accessor :homepage, :maintainers
     @cache_name = "nix"
 
     def version
@@ -315,6 +328,30 @@ module DistroPackage
       result = result.gsub(/-daemon$/,"").gsub(/-static$/,"").gsub(/-binary$/,"")
       result = result.gsub(/-with-perl$/,"")
       return result
+    end
+
+    def serialize
+      return super.merge({:homepage => @homepage, :maintainers => @maintainers})
+    end
+
+
+    def self.deserialize(val)
+      pkg = super(val)
+      pkg.homepage = val[:homepage]
+      pkg.maintainers = val[:maintainers]
+      return pkg
+    end
+
+    def self.create_table(db)
+      db.create_table!(table_name) do
+        String :internal_name, :unique => true, :primary_key => true
+        String :name
+        String :version
+        String :url
+        String :revision
+        String :homepage
+        String :maintainers
+      end
     end
 
     def self.nixpkgs_get_attr(attr)
@@ -351,11 +388,21 @@ module DistroPackage
       puts %x(git clone https://github.com/NixOS/nixpkgs.git)
       puts %x(cd nixpkgs && git pull --rebase)
 
-      %x(nix-env -qa '*' --attr-path --file ./nixpkgs/|uniq).split("\n").each do|entry|
+      pkgs_xml = Nokogiri.XML(%x(nix-env -qa '*' --attr-path --meta --xml --file ./nixpkgs/))
+      pkgs_xml.xpath('items/item').each do|entry|
         next if blacklist.include? entry
-        if /(?<attr>\S*)\s*(?<name>.*)/ =~ entry
+        attr = entry[:attrPath]
+        name = entry[:name]
+        if name and attr
           package = Nix.instantiate(attr, name)
-          nix_list[package.name] = package if package
+          if package
+            homepage = entry.xpath('meta[@name="homepage"]').first
+            package.homepage = homepage[:value] if homepage
+            maintainers = entry.xpath('meta[@name="maintainers"]/string').map{|m| m[:value]}.join(";")
+            package.maintainers = maintainers if maintainers
+            puts package.serialize.inspect
+            nix_list[package.name] = package 
+          end
         else
           puts "failed to parse #{entry}"
         end
