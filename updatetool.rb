@@ -8,6 +8,7 @@ require 'distro-package.rb'
 require 'package-updater.rb'
 require 'security-advisory'
 require 'sequel'
+require 'set'
 
 include PackageUpdater
 
@@ -25,26 +26,6 @@ pkgs_to_check = []
 db_path = './db.sqlite'
 DB = Sequel.sqlite(db_path)
 DistroPackage::DB = DB
-
-updaters = [ 
-             Repository::CPAN, # + not too horrible
-             Repository::RubyGems, # +
-             Repository::Xorg, # + 
-             Repository::GNOME, #+
-             Distro::Gentoo, #+
-             Repository::Hackage, # +
-             Repository::Pypi, # +
-             Repository::KDE, # +
-             Repository::GNU,# + produces lots of warning trash
-             Repository::SF, # + lots of trash I can't avoid 
-             Repository::NPMJS,
-             Repository::FetchGit,
-             Repository::GitHub,
-             GentooDistfiles, # +
-             Distro::Arch, # +
-             Distro::Debian, # +
-             Distro::AUR, # +
-]
 
 distros_to_update = []
 
@@ -115,7 +96,7 @@ if action == :coverage
 
   coverage = {}
   DistroPackage::Nix.packages.each do |pkg|
-    coverage[pkg] = updaters.map{ |updater| (updater.covers?(pkg) ? 1 : 0) }.reduce(0, :+)
+    coverage[pkg] = Updaters.map{ |updater| (updater.covers?(pkg) ? 1 : 0) }.reduce(0, :+)
   end
 
   DB.transaction do
@@ -144,7 +125,7 @@ if action == :coverage
 
 elsif action == :check_updates
 
-  updaters.each do |updater|
+  Updaters.each do |updater|
     DB.transaction do
 
       DB.create_table!(updater.friendly_name) do
@@ -166,13 +147,13 @@ elsif action == :check_updates
 
   # generate CSV report
   csv_string = CSV.generate do |csv|
-    csv << ([ 'Attr', 'Name','Version', 'Coverage' ] + updaters.map(&:name))
+    csv << ([ 'Attr', 'Name','Version', 'Coverage' ] + Updaters.map(&:name))
 
     pkgs_to_check.each do |pkg|
       report_line = [ pkg.internal_name, pkg.name, pkg.version ]
-      report_line << updaters.map{ |updater| (updater.covers?(pkg) ? 1 : 0) }.reduce(0, :+)
+      report_line << Updaters.map{ |updater| (updater.covers?(pkg) ? 1 : 0) }.reduce(0, :+)
 
-      updaters.each do |updater|
+      Updaters.each do |updater|
         record = DB[updater.friendly_name][:pkg_attr => pkg.internal_name]
         report_line << ( record ? record[:version] : nil )
       end

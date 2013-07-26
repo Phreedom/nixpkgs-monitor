@@ -721,4 +721,24 @@ module PackageUpdater
   end
 
 
+  Updaters = [ 
+             Repository::CPAN,
+             Repository::RubyGems,
+             Repository::Xorg, 
+             Repository::GNOME,
+             Distro::Gentoo,
+             Repository::Hackage,
+             Repository::Pypi,
+             Repository::KDE,
+             Repository::GNU,
+             Repository::SF,
+             Repository::NPMJS,
+             Repository::FetchGit,
+             Repository::GitHub,
+             GentooDistfiles,
+             Distro::Arch,
+             Distro::Debian,
+             Distro::AUR,
+  ]
+
 end
