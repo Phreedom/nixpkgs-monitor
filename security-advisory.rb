@@ -3,6 +3,46 @@ require 'distro-package'
 
 module SecurityAdvisory
 
+  class CVE
+    attr_reader :id, :packages
+
+    def self.load_from(file)
+      result = []
+      xml = Nokogiri::XML(File.read(file))
+
+      xml.xpath('xmlns:nvd/xmlns:entry').each do |entry|
+        #puts "loading #{entry[:id]}"
+        packages = []
+        entry.xpath('vuln:vulnerable-software-list').each do |list|
+
+          list.xpath('vuln:product').each do |product|
+            pname = product.inner_text
+            unless parse_package(pname)
+              puts "failed to parse #{pname} @ #{entry[:id]}"
+            else
+              packages << pname
+            end
+          end
+
+        end
+        result << new(entry[:id], packages)
+      end
+
+      return result
+    end
+
+    def initialize(id, packages)
+      @id = id
+      @packages = packages
+    end
+
+    def self.parse_package(package)
+      return nil unless %r{^cpe:/.:(?<supplier>[^:]*):(?<product>[^:]*):(?<version>[^:]*)} =~ package
+      return [ supplier, product, version ]
+    end
+
+  end
+
   class GLSA
     attr_reader :id, :packages
 
