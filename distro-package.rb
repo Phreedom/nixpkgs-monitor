@@ -330,6 +330,10 @@ module DistroPackage
       return result
     end
 
+    def maintainer_count
+      (maintainers and maintainers != "") ? maintainers.split(";").size : 0
+    end
+
     def serialize
       return super.merge({:homepage => @homepage, :maintainers => @maintainers})
     end
