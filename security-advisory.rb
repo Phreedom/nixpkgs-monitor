@@ -31,6 +31,17 @@ module SecurityAdvisory
       return result
     end
 
+
+    def self.list
+      unless @list
+        @list = load_from('nvdcve-2.0-2012.xml') +
+                load_from('nvdcve-2.0-2013.xml') +
+                load_from('nvdcve-2.0-modified.xml')
+      end
+      @list
+    end
+
+
     def initialize(id, packages)
       @id = id
       @packages = packages
