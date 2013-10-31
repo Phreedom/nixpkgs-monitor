@@ -4,7 +4,11 @@ NixPkgs package status, freshness and security status monitor
 
 ## updatetool.rb
 
-(re)generates package caches using --list-{arch,deb,nix,gentoo}
+(Re)generate package caches: --list-{arch,deb,nix,gentoo}
+Fetch CVE data: --cve-update
+
+After package cache is populated, generate all essential reports using
+--coverage --check-updates --cve-check
 
 Checks updates for a single package or all packages.
 
