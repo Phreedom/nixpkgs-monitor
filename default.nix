@@ -6,7 +6,7 @@ let
     };
   };
 
-  required_gems = with pkgs.rubyLibs; [ mechanize sequel sqlite3 ];
+  required_gems = with pkgs.rubyLibs; [ mechanize sequel sqlite3 sinatra haml ];
 in
 with pkgs;
 stdenv.mkDerivation {
@@ -32,10 +32,17 @@ stdenv.mkDerivation {
 
     ensureDir $out/bin
     cp updatetool.rb $out/bin
+    cp nixpkgs-monitor-site $out/bin
 
     wrapProgram "$out/bin/updatetool.rb" \
           --prefix GEM_PATH : "$GEM_PATH" \
           --prefix RUBYLIB : "${rubygems}/lib:$gemlibpath" \
           --set RUBYOPT rubygems
+
+    wrapProgram "$out/bin/nixpkgs-monitor-site" \
+          --prefix GEM_PATH : "$GEM_PATH" \
+          --prefix RUBYLIB : "${rubygems}/lib:$gemlibpath" \
+          --set RUBYOPT rubygems
+
   '';
 }
