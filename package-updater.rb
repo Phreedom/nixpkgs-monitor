@@ -216,6 +216,8 @@ module PackageUpdater
   class GentooDistfiles < Updater
 
     def self.covers?(pkg)
+      return false if Repository::CPAN.covers?(pkg) or Repository::Pypi.covers?(pkg) or
+                      Repository::RubyGems.covers?(pkg) or Repository::Hackage.covers?(pkg)
       return false unless %r{/(?<file>[^/]*)$} =~ pkg.url
       (package_name, file_version) = parse_tarball_name(file)
 
@@ -245,6 +247,7 @@ module PackageUpdater
 
 
     def self.newest_version_of(pkg)
+      return nil unless covers?(pkg)
         return new_tarball_version(pkg, distfiles)
     end
 
