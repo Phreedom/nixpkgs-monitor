@@ -22,6 +22,7 @@ PackageUpdater::Log = log
 csv_report_file = nil
 action = nil
 pkgs_to_check = []
+do_cve_update = false
 
 db_path = './db.sqlite'
 DB = Sequel.sqlite(db_path)
@@ -74,6 +75,14 @@ OptionParser.new do |o|
 
   o.on("--find-unmatched-advisories", "Find security advisories which don't map to a Nix package(don't touch yet)") do
     action = :find_unmatched_advisories
+  end
+
+  o.on("--cve-update", "Fetch CVE updates") do
+    do_cve_update = true
+  end
+
+  o.on("--cve-check", "Check NixPkgs against CVE database") do
+    action = :cve_check
   end
 
   o.on("--coverage", "list NixPkgs packages which have (no) update coverage") do
@@ -192,6 +201,99 @@ elsif action == :find_unmatched_advisories
       log.info "Skipping #{glsa.id} as known safe"
     else
       log.warn "Failed to match #{glsa.id} #{glsa.packages}"
+    end
+  end
+end
+
+
+SecurityAdvisory::CVE.fetch_updates if do_cve_update
+
+
+if action == :cve_check
+
+  def sorted_hash_to_s(tokens)
+    tokens.keys.sort{|x,y| tokens[x] <=> tokens[y] }.map{|t| "#{t}: #{tokens[t]}"}.join("\n")
+  end
+
+  list = SecurityAdvisory::CVE.list
+
+  products = {}
+  list.each do |entry|
+    entry.packages.each do |pkg|
+      (supplier, product, version) = SecurityAdvisory::CVE.parse_package(pkg)
+      pname = "#{product}"
+      if products[pname]
+        products[pname] << version
+      else
+        products[pname] = Set.new
+      end
+    end
+  end
+  puts "products #{products.count}: #{products.keys.join("\n")}"
+
+  products.each_pair do |product, versions|
+    versions.each do |version|
+      log.warn "can't parse version #{product} : #{version}" unless version =~ /^\d+\.\d+\.\d+\.\d+/ or version =~ /^\d+\.\d+\.\d+/ or version =~ /^\d+\.\d+/ or version =~ /^\d+/ 
+    end
+  end
+
+  tokens = {}
+  products.keys.each do |product|
+    product.scan(/(?:[a-zA-Z]+)|(?:\d+)/).each do |token|
+      tokens[token] = ( tokens[token] ? (tokens[token] + 1) : 1 )
+    end
+  end
+  log.info "token counts \n #{sorted_hash_to_s(tokens)} \n\n"
+
+  selectivity = {}
+  tokens.keys.each do |token|
+    selectivity[token] = DistroPackage::Nix.packages.count do |pkg|
+      pkg.internal_name.include? token or pkg.name.include? token
+    end
+  end
+  log.info "token selectivity \n #{sorted_hash_to_s(selectivity)} \n\n"
+
+  false_positive_impact = {}
+  tokens.keys.each{ |t| false_positive_impact[t] = tokens[t] * selectivity[t] }
+  log.info "false positive impact \n #{sorted_hash_to_s(false_positive_impact)} \n\n"
+
+  product_blacklist = Set.new [ '.net_framework', 'iphone_os', 'nx-os',
+    'unified_computing_system_infrastructure_and_unified_computing_system_software',
+    'bouncycastle:legion-of-the-bouncy-castle-c%23-crytography-api', # should be renamed instead of blocked
+  ]
+
+  products.each_pair do |product, versions|
+    next if product_blacklist.include? product
+    tk = product.scan(/(?:[a-zA-Z]+)|(?:\d+)/).select do |token|
+      token.size != 1 and not(['the','and','in','on','of','for'].include? token)
+    end
+
+    pkgs =
+      DistroPackage::Nix.packages.select do |pkg|
+        score = tk.reduce(0) do |score, token|
+          res = ((pkg.internal_name.include? token or pkg.name.include? token) ? 1 : 0)
+          res *= ( selectivity[token]>20 ? 0.51 : 1 )
+          score + res
+        end
+        ( score >= 1 or ( tk.size == 1 and score >= 0.3 ) )
+      end.to_set
+
+    versions.each do |version|
+      if version =~ /^\d+\.\d+\.\d+\.\d+/ or version =~ /^\d+\.\d+\.\d+/ or version =~ /^\d+\.\d+/ or version =~ /^\d+/ 
+        v = $&
+        pkgs.each do |pkg|
+          next if product == 'perl' and pkg.internal_name.start_with? 'perlPackages.'
+          next if product == 'python' and (pkg.internal_name =~ /^python\d\dPackages\./ or pkg.internal_name.start_with? 'pythonDocs.')
+          if pkg.version =~ /^\d+\.\d+\.\d+\.\d+/ or pkg.version =~ /^\d+\.\d+\.\d+/ or pkg.version =~ /^\d+\.\d+/ or pkg.version =~ /^\d+/ 
+            v2 = $&
+
+          #if (pkg.version == v) or (pkg.version.start_with? v and not( ('0'..'9').include? pkg.version[v.size]))
+            if v == v2
+              log.warn "match: #{product}:#{version} = #{pkg.internal_name}/#{pkg.name}:#{pkg.version}"
+            end
+          end
+        end
+      end
     end
   end
 
