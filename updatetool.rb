@@ -218,15 +218,17 @@ if action == :cve_check
   list = SecurityAdvisory::CVE.list
 
   products = {}
+  product_to_cve = {}
   list.each do |entry|
     entry.packages.each do |pkg|
       (supplier, product, version) = SecurityAdvisory::CVE.parse_package(pkg)
       pname = "#{product}"
-      if products[pname]
-        products[pname] << version
-      else
-        products[pname] = Set.new
-      end
+      products[pname] = Set.new unless products[pname]
+      products[pname] << version
+
+      fullname = "#{product}:#{version}"
+      product_to_cve[fullname] = Set.new unless product_to_cve[fullname]
+      product_to_cve[fullname] << entry.id
     end
   end
   puts "products #{products.count}: #{products.keys.join("\n")}"
@@ -289,7 +291,7 @@ if action == :cve_check
 
           #if (pkg.version == v) or (pkg.version.start_with? v and not( ('0'..'9').include? pkg.version[v.size]))
             if v == v2
-              log.warn "match: #{product}:#{version} = #{pkg.internal_name}/#{pkg.name}:#{pkg.version}"
+              log.warn "match #{product_to_cve["#{product}:#{version}"].inspect}: #{product}:#{version} = #{pkg.internal_name}/#{pkg.name}:#{pkg.version}"
             end
           end
         end
