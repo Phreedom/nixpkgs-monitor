@@ -52,6 +52,19 @@ helpers do
     @outdated
   end
 
+  def vulnerable
+    unless @vulnerable
+      @vulnerable = Hash.new{|h,k| h[k] = Hash.new}
+      DB[:cve_match].all.each do |match|
+        cve_product = "#{match[:product]}:#{match[:version]}"
+        products = @vulnerable[match[:pkg_attr]]
+        products[cve_product] = Set.new unless products[cve_product]
+        products[cve_product] << match[:CVE]
+      end
+    end
+    return @vulnerable
+  end
+
 end
 
 
@@ -64,7 +77,8 @@ get '/' do
     r += "<tr><td>#{ms[0]}</td><td><a href=/coverage?mc=#{ms[0]}>#{ms[1]}</a></td></tr>"
   end
 
-  needsattention_report = "<tr><td>Vulnerable</td><td></td></tr>" +
+  needsattention_report =
+      "<tr><td>Potentially vulnerable</td><td><a href=/vulnerable>#{vulnerable.count}</a></td></tr>" +
       "<tr><td>Unmaintained not covered</td><td><a href=/coverage?mc=0&c=0>#{
         coverage.keys.select{ |pkg| coverage[pkg] == 0 }.
           count{ |pkg| DistroPackage::Nix.by_internal_name[pkg].maintainer_count ==0 }
@@ -91,6 +105,7 @@ get '/coverage' do
   haml :coverage, :locals => { :coverage_report => report }
 end
 
+
 get '/outdated' do
   report = outdated.
     sort_by{ |pkg, v| pkg }.
@@ -100,6 +115,17 @@ get '/outdated' do
     }</td>" }
 
     haml :outdated, :locals => { :outdated_report => report }
+end
+
+
+get '/vulnerable' do
+  report = vulnerable.reduce("") do |r, vuln|
+    r += vuln[1].reduce("") do |r, prod|
+      r += "<tr><td>#{vuln[0]}:#{DistroPackage::Nix.by_internal_name[vuln[0]].version}</td><td>#{prod[0]}</td><td>#{prod[1].to_a.join(', ') }</td></tr>"
+    end
+  end
+
+  haml :vulnerable, :locals => { :vulnerable_report => report }
 end
 
 
@@ -192,3 +218,16 @@ __END__
       %th Current
       %th New Version(s)
     = outdated_report
+
+
+@@vulnerable
+
+<link rel="stylesheet" href="/default.css" type="text/css" />
+
+.dashitem
+  %table
+    %tr
+      %th Attr Path/Version
+      %th CVE Product
+      %th CVE ID(s)
+    = vulnerable_report
