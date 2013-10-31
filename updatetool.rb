@@ -264,6 +264,15 @@ if action == :cve_check
     'bouncycastle:legion-of-the-bouncy-castle-c%23-crytography-api', # should be renamed instead of blocked
   ]
 
+  DB.transaction do
+
+  DB.create_table!(:cve_match) do
+    String :pkg_attr#, :primary_key => true
+    String :product
+    String :version
+    String :CVE
+  end
+
   products.each_pair do |product, versions|
     next if product_blacklist.include? product
     tk = product.scan(/(?:[a-zA-Z]+)|(?:\d+)/).select do |token|
@@ -291,12 +300,23 @@ if action == :cve_check
 
           #if (pkg.version == v) or (pkg.version.start_with? v and not( ('0'..'9').include? pkg.version[v.size]))
             if v == v2
-              log.warn "match #{product_to_cve["#{product}:#{version}"].inspect}: #{product}:#{version} = #{pkg.internal_name}/#{pkg.name}:#{pkg.version}"
+              fullname = "#{product}:#{version}"
+              product_to_cve[fullname].each do |cve|
+                DB[:cve_match] << {
+                  :pkg_attr => pkg.internal_name,
+                  :product => product,
+                  :version => version,
+                  :CVE => cve
+                }
+              end
+              log.warn "match #{product_to_cve[fullname].inspect}: #{product}:#{version} = #{pkg.internal_name}/#{pkg.name}:#{pkg.version}"
             end
           end
         end
       end
     end
+  end
+
   end
 
 end
