@@ -386,8 +386,8 @@ module PackageUpdater
       def self.tarballs
         unless @tarballs
           @tarballs = {}
-          # Mechanize automatically unpacks gz, so we get tar
-          tgz = http_agent.get('http://hackage.haskell.org/packages/archive/00-index.tar.gz').body
+          index_gz = http_agent.get('http://hackage.haskell.org/packages/archive/00-index.tar.gz').body
+          tgz = Zlib::GzipReader.new(StringIO.new(index_gz)).read
           tar = Gem::Package::TarReader.new(StringIO.new(tgz))
           tar.each do |entry|
             log.warn "failed to parse #{entry.full_name}" unless entry.full_name =~ %r{^([^/]+)/([^/]+)/}
