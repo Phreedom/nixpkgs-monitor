@@ -38,8 +38,6 @@ helpers do
 
         outdated[row[:pkg_attr]][row[:version]] = [] unless outdated[row[:pkg_attr]][row[:version]]
         outdated[row[:pkg_attr]][row[:version]] << updater.friendly_name.to_s
-        puts row[:pkg_attr]
-        puts row[:version]
         outdated[row[:pkg_attr]][row[:version]]
 
       end
