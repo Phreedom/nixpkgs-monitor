@@ -332,6 +332,7 @@ module PackageUpdater
               next if tarball.end_with?('.txt', "CHECKSUMS", '.readme', '.meta', '.sig', '.diff', '.patch')
               (package_name, file_version) = parse_tarball_name(tarball)
               if file_version and package_name
+                package_name = package_name.downcase
                 @tarballs[package_name] = [] unless @tarballs[package_name]
                 @tarballs[package_name] = @tarballs[package_name] << file_version 
               else
