@@ -231,7 +231,7 @@ module PackageUpdater
         files = http_agent.get('http://distfiles.gentoo.org/distfiles/').links.map(&:href)
         files.each do |tarball|
           (name, version) = parse_tarball_name(tarball)
-          if name
+          if name and name != "v"
             name = name.downcase
             version = version.downcase
             unless version.include? 'patch' or version.include? 'diff'
