@@ -358,32 +358,6 @@ module DistroPackage
       end
     end
 
-    def self.nixpkgs_get_attr(attr)
-      %x(nix-instantiate --eval-only --xml --strict -A #{attr} ./nixpkgs/)
-    end
-
-    def self.instantiate(attr, name)
-      url = 'none'
-      rev = nil
-      unless /string value="(?<url>[^"]*)"/ =~ nixpkgs_get_attr("#{attr}.src.urls")
-        puts "maybe #{attr} #{name} fetches sources from a VCS?"
-
-        unless /string value="(?<rev>[^"]*)"/ =~ nixpkgs_get_attr("#{attr}.src.rev") and
-               /string value="(?<url>[^"]*)"/ =~ nixpkgs_get_attr("#{attr}.src.url")
-          puts "failed to find sources for #{attr} #{name}"
-        end
-      end
-
-      if name =~ /(.*?)-([^A-Za-z].*)/
-        result =  Nix.new(attr, $1, $2, url, rev)
-      else
-        puts "failed to parse name for #{attr} #{name}"
-        result = Nix.new(attr, name, "", url, rev)
-      end
-
-      return result
-    end
-
 
     def self.generate_list
       blacklist = []
@@ -392,21 +366,36 @@ module DistroPackage
       puts %x(git clone https://github.com/NixOS/nixpkgs.git)
       puts %x(cd nixpkgs && git pull --rebase)
 
-      pkgs_xml = Nokogiri.XML(%x(nix-env -qa '*' --attr-path --meta --xml --file ./nixpkgs/))
+      pkgs_xml = Nokogiri.XML(%x(nix-env-patched -qa '*' --attr-path --meta --xml --file ./nixpkgs/))
       pkgs_xml.xpath('items/item').each do|entry|
         next if blacklist.include? entry
         attr = entry[:attrPath]
         name = entry[:name]
         if name and attr
-          package = Nix.instantiate(attr, name)
-          if package
-            homepage = entry.xpath('meta[@name="homepage"]').first
-            package.homepage = homepage[:value] if homepage
-            maintainers = entry.xpath('meta[@name="maintainers"]/string').map{|m| m[:value]}.join(";")
-            package.maintainers = maintainers if maintainers
-            puts package.serialize.inspect
-            nix_list[package.name] = package 
-          end
+          package = ( name =~ /(.*?)-([^A-Za-z].*)/ ? Nix.new(attr, $1, $2) : Nix.new(attr, name, "") )
+          puts "failed to parse name for #{attr} #{name}" if package.version == ""
+
+          url = entry.xpath('meta[@name="repositories.git"]').first
+          package.url = url[:value] if url
+
+          url = entry.xpath('meta[@name="src.repo"]').first
+          package.url = url[:value] if url
+
+          url = entry.xpath('meta[@name="src.url"]').first
+          package.url = url[:value] if url
+
+          puts "failed to find sources for #{attr} #{name}" if package.url == ""
+
+          rev = entry.xpath('meta[@name="src.rev"]').first
+          package.revision = rev[:value] if rev
+
+          homepage = entry.xpath('meta[@name="homepage"]').first
+          package.homepage = homepage[:value] if homepage
+
+          maintainers = entry.xpath('meta[@name="maintainers"]/string').map{|m| m[:value]}.join(";")
+          package.maintainers = maintainers if maintainers
+
+          nix_list[package.name] = package 
         else
           puts "failed to parse #{entry}"
         end
