@@ -14,11 +14,17 @@ stdenv.mkDerivation {
 
   src = ./.;
 
-  buildInputs = [ rubygems ruby makeWrapper ];
-
+  buildInputs = [
+    rubygems ruby makeWrapper swig2 nix 
+    boehmgc # Nix fails to propagate headers. TODO: upstream this
+  ];
 
   requiredUserEnvPkgs = required_gems;
   propagatedBuildInputs = required_gems;
+
+
+  NIX_CFLAGS_COMPILE="-I${nix}/include/nix";
+  NIX_LDFLAGS="-L${nix}/lib/nix";
 
   installPhase = ''
     addToSearchPath GEM_PATH $out/${ruby.gemPath}
@@ -30,8 +36,11 @@ stdenv.mkDerivation {
     cp security-advisory.rb $gemlibpath
     echo $gemlibpath
 
+    g++ nix-env-patched.cc -lexpr -lformat -lstore -lutil -lmain -lgc -o nix-env-patched
+
     ensureDir $out/bin
     cp updatetool.rb $out/bin
+    cp nix-env-patched $out/bin
     cp nixpkgs-monitor-site $out/bin
 
     wrapProgram "$out/bin/updatetool.rb" \
