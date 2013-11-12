@@ -39,20 +39,25 @@ module DistroPackage
     end
 
 
+    def self.load_from_db(db)
+      if DB.table_exists?(table_name)
+        DB[table_name].each do |record|
+          package = deserialize(record)
+          @list[package.name] = package
+          @by_internal_name[package.internal_name] = package
+        end
+      else
+        STDERR.puts "#{table_name} doesn't exist"
+      end
+    end
+
+
     def self.list
       unless @list
         @list = {}
         @by_internal_name = {}
 
-        if DB.table_exists?(table_name)
-          DB[table_name].each do |record|
-            package = deserialize(record)
-            @list[package.name] = package
-            @by_internal_name[package.internal_name] = package
-          end
-        else
-          STDERR.puts "#{table_name} doesn't exist"
-        end
+        load_from_db(DB)
       end
 
       return @list
@@ -83,12 +88,19 @@ module DistroPackage
     end
 
 
+    def self.serialize_to_db(db, list)
+      puts "ASDFASDFserializing #{list.values.count}"
+      list.values.each do |package|
+        db[table_name] << package.serialize
+        puts  package.serialize
+      end
+    end
+
+
     def self.serialize_list(list)
       DB.transaction do
         create_table(DB)
-        list.values.each do |package|
-          DB[table_name] << package.serialize
-        end
+        serialize_to_db(DB, list)
       end
     end
 
@@ -330,21 +342,19 @@ module DistroPackage
       return result
     end
 
-    def maintainer_count
-      (maintainers and maintainers != "") ? maintainers.split(";").size : 0
-    end
 
     def serialize
-      return super.merge({:homepage => @homepage, :maintainers => @maintainers})
+      return super.merge({:homepage => @homepage})
     end
 
 
     def self.deserialize(val)
       pkg = super(val)
       pkg.homepage = val[:homepage]
-      pkg.maintainers = val[:maintainers]
+      pkg.maintainers = []
       return pkg
     end
+
 
     def self.create_table(db)
       db.create_table!(table_name) do
@@ -354,7 +364,33 @@ module DistroPackage
         String :url
         String :revision
         String :homepage
-        String :maintainers
+      end
+
+      db.create_table!(:nix_maintainers) do
+        String :internal_name
+        String :maintainer
+      end
+    end
+
+
+    def self.serialize_to_db(db, list)
+      super
+      list.values.each do |package|
+        package.maintainers.each do |maintainer|
+          db[:nix_maintainers] << { :internal_name => package.internal_name, :maintainer =>maintainer }
+        end
+      end
+    end
+
+
+    def self.load_from_db(db)
+      super
+      if DB.table_exists?(:nix_maintainers)
+        DB[:nix_maintainers].each do |record|
+          @by_internal_name[record[:internal_name]].maintainers << record[:maintainer]
+        end
+      else
+        STDERR.puts "#{:nix_maintainers} doesn't exist"
       end
     end
 
@@ -392,10 +428,10 @@ module DistroPackage
           homepage = entry.xpath('meta[@name="homepage"]').first
           package.homepage = homepage[:value] if homepage
 
-          maintainers = entry.xpath('meta[@name="maintainers"]/string').map{|m| m[:value]}.join(";")
-          package.maintainers = maintainers if maintainers
+          maintainers = entry.xpath('meta[@name="maintainers"]/string').map{|m| m[:value]}
+          package.maintainers = ( maintainers ? maintainers : [] )
 
-          nix_list[package.name] = package 
+          nix_list[package.name] = package
         else
           puts "failed to parse #{entry}"
         end
