@@ -30,6 +30,8 @@ DistroPackage::DB = DB
 
 distros_to_update = []
 
+updaters = Updaters
+
 OptionParser.new do |o|
   o.on("-v", "Verbose output. Can be specified multiple times") do
     log.level -= 1
@@ -61,6 +63,10 @@ OptionParser.new do |o|
 
   o.on("--check-pkg-version-match", "List Nix packages for which either tarball can't be parsed or its version doesn't match the package version") do
     action = :check_pkg_version_match
+  end
+
+  o.on("--updater UPDATER", "Check for updates using only UPDATER. Accepts partial names.") do |uname|
+    updaters = Updaters.select { |u| u.friendly_name.to_s.downcase.include? uname.downcase }
   end
 
   o.on("--check-updates", "list NixPkgs packages which have updates available") do
@@ -97,7 +103,7 @@ OptionParser.new do |o|
   begin
     o.parse(ARGV)
   rescue
-    abort "Wrong parameters. See --help for more information."
+    abort "Wrong parameters: #{$!}. See --help for more information."
   end
 end
 
@@ -140,7 +146,7 @@ if action == :coverage
 
 elsif action == :check_updates
 
-  Updaters.each do |updater|
+  updaters.each do |updater|
     DB.transaction do
 
       DB.create_table!(updater.friendly_name) do
@@ -162,13 +168,13 @@ elsif action == :check_updates
 
   # generate CSV report
   csv_string = CSV.generate do |csv|
-    csv << ([ 'Attr', 'Name','Version', 'Coverage' ] + Updaters.map(&:name))
+    csv << ([ 'Attr', 'Name','Version', 'Coverage' ] + updaters.map(&:name))
 
     pkgs_to_check.each do |pkg|
       report_line = [ pkg.internal_name, pkg.name, pkg.version ]
-      report_line << Updaters.map{ |updater| (updater.covers?(pkg) ? 1 : 0) }.reduce(0, :+)
+      report_line << updaters.map{ |updater| (updater.covers?(pkg) ? 1 : 0) }.reduce(0, :+)
 
-      Updaters.each do |updater|
+      updaters.each do |updater|
         record = DB[updater.friendly_name][:pkg_attr => pkg.internal_name]
         report_line << ( record ? record[:version] : nil )
       end
