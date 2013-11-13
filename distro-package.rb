@@ -291,10 +291,10 @@ module DistroPackage
         JSON.parse(packages_json)["packages"].each do |pkg|
           name = pkg["name"]
           gentoo_list[name] = Gentoo.new(cat["category"] + '/' + name, name) unless gentoo_list[name]
-          if pkg["last_version_gentoo"]
+          if pkg["last_version_gentoo"] and not(pkg["last_version_gentoo"]["version"].include? '9999')
             gentoo_list[name].version = pkg["last_version_gentoo"]["version"]
           end
-          if pkg["last_version_overlay"]
+          if pkg["last_version_overlay"] and not(pkg["last_version_overlay"]["version"].include? '9999')
             gentoo_list[name].version_overlay = pkg["last_version_overlay"]["version"]
           end
           if pkg["last_version_upstream"]
