@@ -94,8 +94,14 @@ OptionParser.new do |o|
     exit
   end
 
-  o.parse(ARGV)
+  begin
+    o.parse(ARGV)
+  rescue
+    abort "Wrong parameters. See --help for more information."
+  end
 end
+
+abort "No action requested. See --help for more information." unless distros_to_update != [] or action or do_cve_update
 
 distros_to_update.each do |distro|
   log.debug distro.generate_list.inspect
