@@ -72,7 +72,9 @@ helpers do
       #outdated
       (not filter[:outdated] or outdated.has_key?(pkg)) and
       #vulnerable
-      (not filter[:vulnerable] or vulnerable.has_key?(pkg))
+      (not filter[:vulnerable] or vulnerable.has_key?(pkg)) and
+      # has maintainer
+      (not filter[:m] or (DistroPackage::Nix.by_internal_name[pkg].maintainers.index{ |m| m.downcase.include? filter[:m].downcase }))
       # to be continued
     })
   end
