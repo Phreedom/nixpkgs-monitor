@@ -72,19 +72,27 @@ helpers do
   def filter_packages(filter)
     Set.new( DistroPackage::Nix.by_internal_name.keys.select { |pkg|
       # maintainer count
-      (not filter[:mc] or filter[:mc].to_i == DistroPackage::Nix.by_internal_name[pkg].maintainers.count) and
+      (not filter[:mc] or filter[:mc] == "" or filter[:mc].to_i == DistroPackage::Nix.by_internal_name[pkg].maintainers.count) and
       # coverage
-      (not filter[:c] or filter[:c].to_i == coverage[pkg]) and
+      (not filter[:c] or filter[:c] == "" or filter[:c].to_i == coverage[pkg]) and
       #outdated
       (not filter[:outdated] or outdated.has_key?(pkg)) and
       #vulnerable
       (not filter[:vulnerable] or vulnerable.has_key?(pkg)) and
       # has maintainer
-      (not filter[:m] or (DistroPackage::Nix.by_internal_name[pkg].maintainers.index{ |m| m.downcase.include? filter[:m].downcase }))
+      (not filter[:m] or filter[:m] == "" or (DistroPackage::Nix.by_internal_name[pkg].maintainers.index{ |m| m.downcase.include? filter[:m].downcase }))
       # to be continued
     })
   end
 
+  def render_filter(params)
+    "<form method=get>" +
+    "<div class=filteritem>Maintainers: <select name=mc><option></option>#{maintainer_stats.keys.map{|k| "<option #{params[:mc] == k.to_s ? "selected" : ""}>#{k}</option>"}.join}</select><br>" +
+    "Coverage: <select name=c><option></option>#{coverage_stats.keys.map{|k| "<option #{params[:c] == k.to_s ? "selected" : ""}>#{k}</option>"}.join}</select></div>" +
+    "<div class=filteritem style=\"text-align: left\"><input type=checkbox name=outdated #{ params[:outdated] ? "checked" : "" }>Outdated<br>" +
+    "<input type=checkbox name=vulnerable #{ params[:vulnerable] ? "checked" : "" }>Vulnerable</div>" +
+    "<div class=filteritem>Maintainer: <input type=text name=m value=\"#{params[:m]}\"><br><input type=submit value=\"Apply Filter\"></div></form>"
+  end
 end
 
 
@@ -133,7 +141,7 @@ get '/coverage' do
                "<td>#{DistroPackage::Nix.by_internal_name[pkg[0]].maintainers.count}</td></tr>"
     end
 
-  haml :coverage, :locals => { :coverage_report => report }
+  haml :coverage, :locals => { :coverage_report => report, :filter => render_filter(params) }
 end
 
 
@@ -148,7 +156,7 @@ get '/outdated' do
         }</td>"
     end
 
-    haml :outdated, :locals => { :outdated_report => report }
+    haml :outdated, :locals => { :outdated_report => report, :filter => render_filter(params.merge({:outdated => true})) }
 end
 
 
@@ -164,7 +172,7 @@ get '/vulnerable' do
     end
   end
 
-  haml :vulnerable, :locals => { :vulnerable_report => report }
+  haml :vulnerable, :locals => { :vulnerable_report => report, :filter => render_filter(params.merge({:vulnerable => true})) }
 end
 
 
@@ -193,6 +201,7 @@ div.dashitem { float: left; }
 div.dashitem th {
     border-bottom: dotted 1px;
 }
+div.filteritem { float: left; text-align: right; padding: 0 1em }
 a { text-decoration: none; }
 a:hover { text-decoration: underline; }
 a:link { color: #0048b3; }
@@ -249,6 +258,9 @@ __END__
 <link rel="stylesheet" href="/default.css" type="text/css" />
 
 .dashitem
+  = filter
+
+.dashitem
   %table
     %tr
       %th Attr Path
@@ -262,6 +274,9 @@ __END__
 <link rel="stylesheet" href="/default.css" type="text/css" />
 
 .dashitem
+  = filter
+
+.dashitem
   %table
     %tr
       %th Attr Path
@@ -273,6 +288,9 @@ __END__
 @@vulnerable
 
 <link rel="stylesheet" href="/default.css" type="text/css" />
+
+.dashitem
+  = filter
 
 .dashitem
   %table
