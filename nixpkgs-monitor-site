@@ -5,13 +5,20 @@ require 'haml'
 require 'sequel'
 require 'distro-package'
 require 'package-updater'
-
+require 'cgi'
 
 db_path = './db.sqlite'
 DB = Sequel.sqlite(db_path)
 DistroPackage::DB = DB
 
 helpers do
+
+  def maintainers
+    unless @maintainers
+      @maintainers = DB[:nix_maintainers].select(:maintainer).distinct.map(:maintainer).map{ |m| m.gsub(/<.*>/,"").strip }
+    end
+    @maintainers
+  end
 
   def fetch_coverage
     DB[:estimated_coverage].all.each_with_object({}){ |c, coverage| coverage[c[:pkg_attr]] = c[:coverage] }
@@ -101,10 +108,18 @@ get '/' do
       }</a></td></tr>" +
       "<tr><td>Outdated</td><td><a href=/outdated>#{outdated.count}</a></td></tr>"
 
+  permaintainer_report = maintainers.reduce("") do |r, maintainer|
+    r += "<tr><td>#{maintainer}</td><td>#{filter_packages({ :m => maintainer }).count}</td>" +
+         "<td><a href=/outdated?m=#{CGI::escape(maintainer)}>#{filter_packages({ :m => maintainer, :outdated => true }).count}</a></td>" +
+         "<td><a href=/coverage?m=#{CGI::escape(maintainer)}&c=0>#{filter_packages({ :m => maintainer, :c => 0 }).count}</a></td>" +
+         "<td><a href=/vulnerable?m=#{CGI::escape(maintainer)}>#{filter_packages({ :m => maintainer, :vulnerable => true }).count}</a></td></tr>"
+  end 
+
   haml :dashboard, :locals => {
     :coverage_report => coverage_report,
     :maintainer_report => maintainer_report,
-    :needsattention_report => needsattention_report
+    :needsattention_report => needsattention_report,
+    :permaintainer_report => permaintainer_report
   }
 end
 
@@ -217,6 +232,17 @@ __END__
 .dashitem#needsattention
   %table
     = needsattention_report
+
+.dashitem#permaintainer
+  %span.header Per Maintainer
+  %table
+    %tr
+      %th Maintainer
+      %th Packages
+      %th Outdated
+      %th Not covered
+      %th Vulnerable
+    = permaintainer_report
 
 
 @@coverage
