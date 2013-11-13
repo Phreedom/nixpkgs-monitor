@@ -161,7 +161,15 @@ module PackageUpdater
           vlist.each do |v|
             if usable_version?(v)
               if is_newer?(v, max_version)
-                max_version = v
+                t_v = tokenize_version(v)
+                t_mv = tokenize_version(max_version)
+
+                #check for and skip 345.gz == v3.4.5 versions for now
+                if t_v[0]>9 and t_v[1] = -1 and t_mv[1] != -1 and t_v[0]>5*t_mv[0]
+                  log.info "found weird(too high) version of #{package_name} : #{v}. skipping"
+                else
+                  max_version = v
+                end
               end
             else
               log.info "found weird version of #{package_name} : #{v}. skipping" 
