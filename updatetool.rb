@@ -17,7 +17,8 @@ log.level = Logger::WARN
 log.formatter = proc { |severity, datetime, progname, msg|
   "#{severity}: #{msg}\n"
 }
-PackageUpdater::Log = log
+
+Log = log
 
 csv_report_file = nil
 action = nil
@@ -26,7 +27,6 @@ do_cve_update = false
 
 db_path = './db.sqlite'
 DB = Sequel.sqlite(db_path)
-DistroPackage::DB = DB
 
 distros_to_update = []
 

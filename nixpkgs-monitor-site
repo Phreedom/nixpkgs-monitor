@@ -9,7 +9,6 @@ require 'cgi'
 
 db_path = './db.sqlite'
 DB = Sequel.sqlite(db_path)
-DistroPackage::DB = DB
 
 helpers do
 

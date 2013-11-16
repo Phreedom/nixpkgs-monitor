@@ -6,9 +6,6 @@ require 'distro-package.rb'
 
 module PackageUpdater
 
-  # logger to be provided elsewhere
-  Log = nil
-
   class Updater
 
     def self.friendly_name
@@ -17,7 +14,7 @@ module PackageUpdater
 
 
     def self.log
-      PackageUpdater::Log
+      Log
     end
 
 

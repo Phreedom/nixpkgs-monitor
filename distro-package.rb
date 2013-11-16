@@ -2,8 +2,6 @@ require 'nokogiri'
 
 module DistroPackage
 
-  DB = nil
-
   # Generic distro package
   class Package
     attr_accessor :internal_name, :name, :version, :url, :revision
@@ -89,10 +87,8 @@ module DistroPackage
 
 
     def self.serialize_to_db(db, list)
-      puts "ASDFASDFserializing #{list.values.count}"
       list.values.each do |package|
         db[table_name] << package.serialize
-        puts  package.serialize
       end
     end
 
