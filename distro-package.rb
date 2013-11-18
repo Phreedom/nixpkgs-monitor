@@ -41,6 +41,7 @@ module DistroPackage
       if DB.table_exists?(table_name)
         DB[table_name].each do |record|
           package = deserialize(record)
+          @packages << package
           @list[package.name] = package
           @by_internal_name[package.internal_name] = package
         end
@@ -54,6 +55,7 @@ module DistroPackage
       unless @list
         @list = {}
         @by_internal_name = {}
+        @packages = []
 
         load_from_db(DB)
       end
@@ -63,15 +65,14 @@ module DistroPackage
 
 
     def self.packages
-      list.values
+      list unless @packages
+      @packages
     end
 
 
     def self.by_internal_name
-      unless @by_internal_name
-        list
-      end
-      return @by_internal_name
+      list unless @by_internal_name
+      @by_internal_name
     end
 
 
@@ -87,7 +88,7 @@ module DistroPackage
 
 
     def self.serialize_to_db(db, list)
-      list.values.each do |package|
+      list.each do |package|
         db[table_name] << package.serialize
       end
     end
@@ -204,8 +205,7 @@ module DistroPackage
         end
       end
 
-      serialize_list(arch_list)
-      return arch_list
+      serialize_list(arch_list.values)
     end
 
   end
@@ -234,8 +234,7 @@ module DistroPackage
         end
       end
 
-      serialize_list(aur_list)
-      return aur_list
+      serialize_list(aur_list.values)
     end
 
   end
@@ -299,8 +298,7 @@ module DistroPackage
         end
       end
 
-      serialize_list(gentoo_list)
-      return gentoo_list
+      serialize_list(gentoo_list.values)
     end
 
 
@@ -325,7 +323,7 @@ module DistroPackage
   # which break matching because nixpks keeps only 1 of the packages
   # with the same name
   class Nix < Package
-    attr_accessor :homepage, :maintainers
+    attr_accessor :homepage, :sha256, :maintainers
     @cache_name = "nix"
 
     def version
@@ -340,13 +338,14 @@ module DistroPackage
 
 
     def serialize
-      return super.merge({:homepage => @homepage})
+      return super.merge({ :homepage => @homepage, :sha256 => @sha256 })
     end
 
 
     def self.deserialize(val)
       pkg = super(val)
       pkg.homepage = val[:homepage]
+      pkg.sha256 = val[:sha256]
       pkg.maintainers = []
       return pkg
     end
@@ -359,6 +358,7 @@ module DistroPackage
         String :version
         String :url
         String :revision
+        String :sha256
         String :homepage
       end
 
@@ -371,7 +371,7 @@ module DistroPackage
 
     def self.serialize_to_db(db, list)
       super
-      list.values.each do |package|
+      list.each do |package|
         package.maintainers.each do |maintainer|
           db[:nix_maintainers] << { :internal_name => package.internal_name, :maintainer =>maintainer }
         end
@@ -393,7 +393,7 @@ module DistroPackage
 
     def self.generate_list
       blacklist = []
-      nix_list = {}
+      nix_list = []
 
       puts %x(git clone https://github.com/NixOS/nixpkgs.git)
       puts %x(cd nixpkgs && git pull --rebase)
@@ -421,20 +421,22 @@ module DistroPackage
           rev = entry.xpath('meta[@name="src.rev"]').first
           package.revision = rev[:value] if rev
 
+          sha256 = entry.xpath('meta[@name="src.sha256"]').first
+          package.sha256 = sha256[:value] if sha256
+
           homepage = entry.xpath('meta[@name="homepage"]').first
           package.homepage = homepage[:value] if homepage
 
           maintainers = entry.xpath('meta[@name="maintainers"]/string').map{|m| m[:value]}
           package.maintainers = ( maintainers ? maintainers : [] )
 
-          nix_list[package.name] = package
+          nix_list << package
         else
           puts "failed to parse #{entry}"
         end
       end
 
       serialize_list(nix_list)
-      return nix_list
     end
 
   end
@@ -466,8 +468,7 @@ module DistroPackage
         end
       end
 
-      serialize_list(deb_list)
-      return deb_list
+      serialize_list(deb_list.values)
     end
 
 
