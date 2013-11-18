@@ -301,6 +301,13 @@ module PackageUpdater
     # handles packages hosted at SourceForge
     class SF < Updater
 
+      def self.tarballs
+        unless @tarballs
+          @tarballs = Hash.new{|h, sf_project| h[sf_project] = tarballs_from_dir("http://qa.debian.org/watch/sf.php/#{sf_project}") }
+        end
+        @tarballs
+      end
+
       def self.covers?(pkg)
         return( pkg.url =~ %r{^mirror://sourceforge/(?:project/)?([^/]+).*?/([^/]+)$} and usable_version?(pkg.version) )
       end
@@ -310,9 +317,7 @@ module PackageUpdater
         url = pkg.url;
         return nil unless url =~ %r{^mirror://sourceforge/(?:project/)?([^/]+).*?/([^/]+)$}
         sf_project = $1
-        sf_file = $2
-        tarballs = tarballs_from_dir("http://qa.debian.org/watch/sf.php/#{sf_project}")
-        return new_tarball_versions(pkg, tarballs)
+        return new_tarball_versions(pkg, tarballs[sf_project])
       end
 
     end
