@@ -642,6 +642,7 @@ module PackageUpdater
         
         log.debug "for #{pkg.revision} found #{tag_line}"
         if tag_line # revision refers to a tag?
+          return nil if repo_contents[tag_line].include?("refs/heads/master")
 
           current_version = tag_to_version(repo_contents[tag_line])
           
