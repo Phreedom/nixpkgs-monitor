@@ -43,16 +43,25 @@ helpers do
 
   def outdated
     unless @outdated
-      @outdated = Hash.new{|h,k| h[k] = Hash.new}
+      @outdated = Hash.new{|h,k| h[k] = Hash.new{|h,k| h[k] = Array.new } }
       PackageUpdater::Updaters.each do |updater|
         DB[updater.friendly_name].all.each do |row|
-          outdated[row[:pkg_attr]][row[:version]] = [] unless outdated[row[:pkg_attr]][row[:version]]
-          outdated[row[:pkg_attr]][row[:version]] << updater.friendly_name.to_s
-          outdated[row[:pkg_attr]][row[:version]]
+          outdated[row[:pkg_attr]][row[:version_major]] << updater.friendly_name.to_s if row[:version_major]
+          outdated[row[:pkg_attr]][row[:version_minor]] << updater.friendly_name.to_s if row[:version_minor]
+          outdated[row[:pkg_attr]][row[:version_fix]] << updater.friendly_name.to_s if row[:version_fix]
         end
       end
     end
     @outdated
+  end
+  
+  def is_major_update?(pkg, new_ver)
+    v_t = PackageUpdater::Updater.tokenize_version(pkg.version)
+    nv_t = PackageUpdater::Updater.tokenize_version(new_ver)
+    return (
+      not(v_t) or not(nv_t) or (v_t[0] != nv_t[0]) or
+      (v_t[2]>=0 and (v_t[1] != nv_t[1]))
+    )
   end
 
   def vulnerable
@@ -150,9 +159,17 @@ get '/outdated' do
     select{ |pkg, v| filtered.include? pkg }.
     sort_by{ |pkg, v| pkg }.
     reduce("") do |r, pkg|
-      r+= "<tr><td>#{pkg[0]}</td><td>#{DistroPackage::Nix.by_internal_name[pkg[0]].version}</td><td>#{
-          pkg[1].map{|version, updaters| "<span title=\"#{updaters.join(', ')}\">#{version}</span>"}.join(', ')
-        }</td>"
+      nixpkg = DistroPackage::Nix.by_internal_name[pkg[0]]
+      r+= "<tr><td>#{pkg[0]}</td><td>#{nixpkg.version}</td>" +
+          "<td>#{pkg[1].
+              select { |version, updaters| not is_major_update?(nixpkg, version) }.
+              map { |version, updaters| "<span title=\"#{updaters.join(', ')}\">#{version}</span>" }.
+              join(', ')
+          }</td><td>#{pkg[1].
+              select { |version, updaters| is_major_update?(nixpkg, version) }.
+              map { |version, updaters| "<span title=\"#{updaters.join(', ')}\">#{version}</span>" }.
+              join(', ')
+          }</td>"
     end
 
     haml :outdated, :locals => { :outdated_report => report, :filter => render_filter(params.merge({:outdated => true})) }
@@ -280,7 +297,8 @@ __END__
     %tr
       %th Attr Path
       %th Current
-      %th New Version(s)
+      %th Minor Update(s)
+      %th Major Update(s)
     = outdated_report
 
 

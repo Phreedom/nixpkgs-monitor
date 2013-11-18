@@ -215,6 +215,19 @@ module PackageUpdater
       return tarballs
     end
 
+
+    def self.newest_versions_of(pkg)
+      v = newest_version_of(pkg)
+      return nil unless v
+      v_t = tokenize_version(v)
+      v_orig_t = tokenize_version(pkg.version)
+      # assume it may be something major if one of the versions is not available or parsable
+      return [ v, nil, nil] unless v_t and v_orig_t
+
+      return [ nil, nil, v] if (v_t[0] == v_orig_t[0]) and (v_t[1] == v_orig_t[1])
+      return [ nil, v, nil] if (v_t[0] == v_orig_t[0])
+      return [ v, nil, nil ]
+    end
   end
 
 

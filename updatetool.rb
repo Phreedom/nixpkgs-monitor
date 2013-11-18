@@ -151,15 +151,22 @@ elsif action == :check_updates
 
       DB.create_table!(updater.friendly_name) do
         String :pkg_attr, :unique => true, :primary_key => true
-        String :version
+        String :version_major
+        String :version_minor
+        String :version_fix
       end
 
       pkgs_to_check.each do |pkg|
-        new_ver = updater.newest_version_of pkg
+        new_ver = updater.newest_versions_of pkg
         if new_ver
           puts "#{pkg.internal_name}/#{pkg.name}:#{pkg.version} " +
                "has new version #{new_ver} according to #{updater.friendly_name}"
-          DB[updater.friendly_name] << { :pkg_attr => pkg.internal_name, :version => new_ver }
+          DB[updater.friendly_name] << {
+            :pkg_attr => pkg.internal_name,
+            :version_major => new_ver[0],
+            :version_minor => new_ver[1],
+            :version_fix   => new_ver[2]
+          }
         end
       end
 
@@ -176,7 +183,7 @@ elsif action == :check_updates
 
       updaters.each do |updater|
         record = DB[updater.friendly_name][:pkg_attr => pkg.internal_name]
-        report_line << ( record ? record[:version] : nil )
+        report_line << ( record ? (record[:version_major] ? record[:version_major] : (record[:version_minor] ? record[:version_minor] : record[:version_fix]) ) : nil )
       end
 
       csv << report_line
