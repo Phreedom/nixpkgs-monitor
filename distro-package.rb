@@ -64,6 +64,13 @@ module DistroPackage
     end
 
 
+    def self.refresh
+      @list = nil
+      @by_internal_name = nil
+      @packages = nil
+    end
+
+
     def self.packages
       list unless @packages
       @packages

@@ -77,6 +77,23 @@ helpers do
     return @vulnerable
   end
 
+  def refresh
+    @vulnerable = nil
+    @outdated = nil
+    @maintainer_stats = nil
+    @coverage_stats = nil
+    @coverage = nil
+    @maintainers = nil
+    DistroPackage::Nix.refresh
+
+    vulnerable
+    outdated
+    maintainer_stats
+    coverage_stats
+    coverage
+    maintainers
+  end
+
   def filter_packages(filter)
     Set.new( DistroPackage::Nix.by_internal_name.keys.select { |pkg|
       nixpkg = DistroPackage::Nix.by_internal_name[pkg]
@@ -240,6 +257,12 @@ get '/vulnerable' do
       join
 
   haml :vulnerable, :locals => { :vulnerable_report => report, :filter => render_filter(params.merge({:vulnerable => true})) }
+end
+
+
+get '/refresh' do
+  refresh
+  "Refresh Done"
 end
 
 
