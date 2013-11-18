@@ -326,6 +326,13 @@ module PackageUpdater
     # handles Node.JS packages hosted at npmjs.org
     class NPMJS < Updater
 
+      def self.metadata
+        unless @metadata
+          @metadata = Hash.new{|h, pkgname| h[pkgname] = JSON.parse(http_agent.get("http://registry.npmjs.org/#{pkgname}/").body) }
+        end
+        @metadata
+      end
+
       def self.covers?(pkg)
         return( pkg.url and pkg.url.start_with?("http://registry.npmjs.org/") and usable_version?(pkg.version) )
       end
@@ -333,8 +340,7 @@ module PackageUpdater
       def self.newest_version_of(pkg)
         return nil unless pkg.url
         return nil unless %r{http://registry.npmjs.org/(?<pkgname>[^\/]*)/} =~ pkg.url
-        metadata = JSON.parse(http_agent.get("http://registry.npmjs.org/#{pkgname}/").body)
-        new_ver = metadata["dist-tags"]["latest"]
+        new_ver = metadata[pkgname]["dist-tags"]["latest"]
         return nil unless usable_version?(new_ver) and usable_version?(pkg.version)
         return( is_newer?(new_ver, pkg.version) ? new_ver : nil ) 
       end
