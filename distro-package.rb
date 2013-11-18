@@ -393,7 +393,7 @@ module DistroPackage
 
     def self.generate_list
       blacklist = []
-      nix_list = []
+      nix_list = {}
 
       puts %x(git clone https://github.com/NixOS/nixpkgs.git)
       puts %x(cd nixpkgs && git pull --rebase)
@@ -430,13 +430,13 @@ module DistroPackage
           maintainers = entry.xpath('meta[@name="maintainers"]/string').map{|m| m[:value]}
           package.maintainers = ( maintainers ? maintainers : [] )
 
-          nix_list << package
+          nix_list[package.sha256 ? package.sha256 : package.internal_name] = package
         else
           puts "failed to parse #{entry}"
         end
       end
 
-      serialize_list(nix_list)
+      serialize_list(nix_list.values)
     end
 
   end
