@@ -592,8 +592,11 @@ module PackageUpdater
     class GitUpdater < Updater
 
       def self.ls_remote(repo)
-        %x(GIT_ASKPASS="echo" SSH_ASKPASS= git ls-remote #{repo}).split("\n")
-          #select{|s| not(s.include? "^{}")}
+        @repo_cache = {} unless @repo_cache
+        unless @repo_cache[repo]
+          @repo_cache[repo] = %x(GIT_ASKPASS="echo" SSH_ASKPASS= git ls-remote #{repo}).split("\n")
+        end
+        @repo_cache[repo]
       end
 
       # Tries to handle the tag as a tarball name.
