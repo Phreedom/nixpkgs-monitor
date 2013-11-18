@@ -534,7 +534,8 @@ static void opQuery(Globals & globals,
                   sSrc(globals.state.symbols.create("src")),
                   sRev(globals.state.symbols.create("rev")),
                   sUrl(globals.state.symbols.create("url")),
-                  sUrls(globals.state.symbols.create("urls"));
+                  sUrls(globals.state.symbols.create("urls")),
+                  sOutputHash(globals.state.symbols.create("outputHash"));
     
     settings.readOnlyMode = true; /* makes evaluation a bit faster */
 
@@ -818,6 +819,14 @@ static void opQuery(Globals & globals,
                                        attrs7["value"] = (format("%1%") % rev->value->integer).str();
                                    }
                                    xml.writeEmptyElement("meta", attrs7);
+                                }
+                                Bindings::iterator sha256 = src->value->attrs->find(sOutputHash);
+                                if (sha256 != src->value->attrs->end()) {
+                                   XMLAttrs attrs6;
+                                   attrs6["name"] = "src.sha256";
+                                   attrs6["type"] = "string";
+                                   attrs6["value"] = globals.state.forceStringNoCtx(*sha256->value);
+                                   xml.writeEmptyElement("meta", attrs6);
                                 }
                             }
                         }
