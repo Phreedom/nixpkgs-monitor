@@ -139,7 +139,7 @@ module PackageUpdater
     end
 
 
-    def self.new_tarball_version(pkg, tarballs)
+    def self.new_tarball_versions(pkg, tarballs)
       url = pkg.url;
       if url =~ %r{/([^/]*)$}
         file = $1
@@ -153,27 +153,35 @@ module PackageUpdater
           package_name = package_name.downcase
           vlist = tarballs[package_name]
           return nil unless vlist
-          return nil unless usable_version?(v2)
-          max_version = v2
+          t_pv = tokenize_version(v2)
+          return nil unless t_pv
+          max_version_major = v2
+          max_version_minor = v2
+          max_version_fix = v2
           vlist.each do |v|
-            if usable_version?(v)
-              if is_newer?(v, max_version)
-                t_v = tokenize_version(v)
-                t_mv = tokenize_version(max_version)
-
-                #check for and skip 345.gz == v3.4.5 versions for now
-                if t_v[0]>9 and t_v[1] = -1 and t_mv[1] != -1 and t_v[0]>5*t_mv[0]
-                  log.info "found weird(too high) version of #{package_name} : #{v}. skipping"
-                else
-                  max_version = v
-                end
+            t_v = tokenize_version(v)
+            if t_v
+              #check for and skip 345.gz == v3.4.5 versions for now
+              if t_v[0]>9 and t_v[1] = -1 and t_pv[1] != -1 and t_v[0]>5*t_pv[0]
+                log.info "found weird(too high) version of #{package_name} : #{v}. skipping"
+              else
+                max_version_major = v if (t_v[0] != t_pv[0])  and is_newer?(v, max_version_major)
+                max_version_minor = v if (t_v[0] == t_pv[0]) and (t_v[1] != t_pv[1])  and is_newer?(v, max_version_minor)
+                max_version_fix = v if (t_v[0] == t_pv[0]) and (t_v[1] == t_pv[1]) and (t_v[2] != t_pv[2])  and is_newer?(v, max_version_fix)
               end
             else
               log.info "found weird version of #{package_name} : #{v}. skipping" 
             end
           end
 
-          return (max_version != v2 ? max_version : nil)
+          return(
+              ((max_version_major == v2) and (max_version_minor == v2) and (max_version_fix == v2)) ? nil
+              : [
+                  (max_version_major != v2 ? max_version_major : nil),
+                  (max_version_minor != v2 ? max_version_minor : nil),
+                  (max_version_fix   != v2 ? max_version_fix   : nil)
+                ]
+          )
         end
 
       end
@@ -264,9 +272,9 @@ module PackageUpdater
     end
 
 
-    def self.newest_version_of(pkg)
+    def self.newest_versions_of(pkg)
       return nil unless covers?(pkg)
-        return new_tarball_version(pkg, distfiles)
+      return new_tarball_versions(pkg, distfiles)
     end
 
   end
@@ -297,14 +305,14 @@ module PackageUpdater
         return( pkg.url =~ %r{^mirror://sourceforge/(?:project/)?([^/]+).*?/([^/]+)$} and usable_version?(pkg.version) )
       end
 
-      def self.newest_version_of(pkg)
+      def self.newest_versions_of(pkg)
         return nil unless pkg.url
         url = pkg.url;
         return nil unless url =~ %r{^mirror://sourceforge/(?:project/)?([^/]+).*?/([^/]+)$}
         sf_project = $1
         sf_file = $2
         tarballs = tarballs_from_dir("http://qa.debian.org/watch/sf.php/#{sf_project}")
-        return new_tarball_version(pkg, tarballs)
+        return new_tarball_versions(pkg, tarballs)
       end
 
     end
@@ -367,10 +375,10 @@ module PackageUpdater
         return( pkg.url and pkg.url.start_with? 'mirror://cpan/' and usable_version?(pkg.version) )
       end
 
-      def self.newest_version_of(pkg)
+      def self.newest_versions_of(pkg)
         return nil unless pkg.url
         if pkg.url.start_with? 'mirror://cpan/'
-          return new_tarball_version(pkg, tarballs)
+          return new_tarball_versions(pkg, tarballs)
         end
       end
 
@@ -384,7 +392,7 @@ module PackageUpdater
         return( pkg.url and pkg.url.include? 'rubygems.org/downloads/' and usable_version?(pkg.version) )
       end
 
-      def self.newest_version_of(pkg)
+      def self.newest_versions_of(pkg)
         return nil unless pkg.url
         return nil unless pkg.url.include? 'rubygems.org/downloads/'
         return nil unless pkg.url =~ %r{/([^/]*)$}
@@ -396,7 +404,7 @@ module PackageUpdater
           @tarballs[package_name] = [] unless @tarballs[package_name]
           @tarballs[package_name] = @tarballs[package_name] << v.inner_text 
         end
-        return new_tarball_version(pkg, @tarballs)
+        return new_tarball_versions(pkg, @tarballs)
       end
 
     end
@@ -427,10 +435,10 @@ module PackageUpdater
         return( pkg.url and pkg.url.start_with? 'http://hackage.haskell.org/' and usable_version?(pkg.version) )
       end
 
-      def self.newest_version_of(pkg)
+      def self.newest_versions_of(pkg)
         return nil unless pkg.url
         if pkg.url.start_with? 'http://hackage.haskell.org/'
-          return new_tarball_version(pkg, tarballs)
+          return new_tarball_versions(pkg, tarballs)
         end
       end
 
@@ -444,12 +452,12 @@ module PackageUpdater
         return( pkg.url =~ %r{^https?://pypi.python.org(/packages/source/./[^/]*/)[^/]*$} and usable_version?(pkg.version) )
       end
 
-      def self.newest_version_of(pkg)
+      def self.newest_versions_of(pkg)
         return nil unless pkg.url
         return nil unless pkg.url =~ %r{^https?://pypi.python.org(/packages/source/./[^/]*/)[^/]*$}
         path = $1
         tarballs = tarballs_from_dir("http://pypi.python.org#{path}")
-        return new_tarball_version(pkg, tarballs)
+        return new_tarball_versions(pkg, tarballs)
       end
 
     end
@@ -462,12 +470,12 @@ module PackageUpdater
         return( pkg.url and pkg.url =~ %r{^mirror://gnu(/[^/]*)/[^/]*$} and usable_version?(pkg.version) )
       end
 
-      def self.newest_version_of(pkg)
+      def self.newest_versions_of(pkg)
         return nil unless pkg.url
         return nil unless pkg.url =~ %r{^mirror://gnu(/[^/]*)/[^/]*$}
         path = $1
         tarballs = tarballs_from_dir("http://ftpmirror.gnu.org#{path}")
-        return new_tarball_version(pkg, tarballs)
+        return new_tarball_versions(pkg, tarballs)
       end
 
     end
@@ -488,10 +496,10 @@ module PackageUpdater
         return( pkg.url and pkg.url.start_with? "mirror://xorg/" and usable_version?(pkg.version) )
       end
 
-      def self.newest_version_of(pkg)
+      def self.newest_versions_of(pkg)
         return nil unless pkg.url
         return nil unless pkg.url.start_with? "mirror://xorg/"
-        return new_tarball_version(pkg, tarballs)
+        return new_tarball_versions(pkg, tarballs)
       end
 
     end
@@ -529,10 +537,10 @@ module PackageUpdater
         return( pkg.url and pkg.url.start_with? 'mirror://kde/stable/' and usable_version?(pkg.version) )
       end
 
-      def self.newest_version_of(pkg)
+      def self.newest_versions_of(pkg)
         return nil unless pkg.url
         if pkg.url.start_with? 'mirror://kde/stable/'
-          return new_tarball_version(pkg, tarballs)
+          return new_tarball_versions(pkg, tarballs)
         end
       end
 
@@ -546,12 +554,12 @@ module PackageUpdater
         return( pkg.url and pkg.url =~ %r{^mirror://gnome(/sources/[^/]*/)[^/]*/[^/]*$} and usable_version?(pkg.version) )
       end
 
-      def self.newest_version_of(pkg)
+      def self.newest_versions_of(pkg)
         return nil unless pkg.url
         return nil unless pkg.url =~ %r{^mirror://gnome(/sources/[^/]*/)[^/]*/[^/]*$}
         path = $1
         tarballs =  JSON.parse(http_agent.get("http://download.gnome.org#{path}cache.json").body)[2]
-        return new_tarball_version(pkg, tarballs)
+        return new_tarball_versions(pkg, tarballs)
       end
 
     end
