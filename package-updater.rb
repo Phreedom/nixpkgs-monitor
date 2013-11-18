@@ -567,6 +567,13 @@ module PackageUpdater
     # handles GNOME packages hosted at mirror://gnome/
     class GNOME < Updater
 
+      def self.tarballs
+        unless @tarballs
+          @tarballs = Hash.new{|h, path| h[path] = JSON.parse(http_agent.get("http://download.gnome.org#{path}cache.json").body)[2] }
+        end
+        @tarballs
+      end
+
       def self.covers?(pkg)
         return( pkg.url and pkg.url =~ %r{^mirror://gnome(/sources/[^/]*/)[^/]*/[^/]*$} and usable_version?(pkg.version) )
       end
@@ -575,8 +582,7 @@ module PackageUpdater
         return nil unless pkg.url
         return nil unless pkg.url =~ %r{^mirror://gnome(/sources/[^/]*/)[^/]*/[^/]*$}
         path = $1
-        tarballs =  JSON.parse(http_agent.get("http://download.gnome.org#{path}cache.json").body)[2]
-        return new_tarball_versions(pkg, tarballs)
+        return new_tarball_versions(pkg, tarballs[path])
       end
 
     end
