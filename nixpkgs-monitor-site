@@ -79,16 +79,21 @@ helpers do
 
   def filter_packages(filter)
     Set.new( DistroPackage::Nix.by_internal_name.keys.select { |pkg|
+      nixpkg = DistroPackage::Nix.by_internal_name[pkg]
       # maintainer count
-      (not filter[:mc] or filter[:mc] == "" or filter[:mc].to_i == DistroPackage::Nix.by_internal_name[pkg].maintainers.count) and
+      (not filter[:mc] or filter[:mc] == "" or filter[:mc].to_i == nixpkg.maintainers.count) and
       # coverage
       (not filter[:c] or filter[:c] == "" or filter[:c].to_i == coverage[pkg]) and
       #outdated
       (not filter[:outdated] or outdated.has_key?(pkg)) and
+      # outdated which has a minor update
+      (not filter[:outdated_minor] or (outdated.has_key?(pkg) and outdated[pkg].keys.find{|v| not is_major_update?(nixpkg, v)}) ) and
+      # outdated which has a major update
+      (not filter[:outdated_major] or (outdated.has_key?(pkg) and outdated[pkg].keys.find{|v| is_major_update?(nixpkg, v)}) ) and
       #vulnerable
       (not filter[:vulnerable] or vulnerable.has_key?(pkg)) and
       # has maintainer
-      (not filter[:m] or filter[:m] == "" or (DistroPackage::Nix.by_internal_name[pkg].maintainers.index{ |m| m.downcase.include? filter[:m].downcase }))
+      (not filter[:m] or filter[:m] == "" or (nixpkg.maintainers.index{ |m| m.downcase.include? filter[:m].downcase }))
       # to be continued
     })
   end
@@ -97,9 +102,12 @@ helpers do
     "<form method=get>" +
     "<div class=filteritem>Maintainers: <select name=mc><option></option>#{maintainer_stats.keys.map{|k| "<option #{params[:mc] == k.to_s ? "selected" : ""}>#{k}</option>"}.join}</select><br>" +
     "Coverage: <select name=c><option></option>#{coverage_stats.keys.map{|k| "<option #{params[:c] == k.to_s ? "selected" : ""}>#{k}</option>"}.join}</select></div>" +
-    "<div class=filteritem style=\"text-align: left\"><input type=checkbox name=outdated #{ params[:outdated] ? "checked" : "" }>Outdated<br>" +
-    "<input type=checkbox name=vulnerable #{ params[:vulnerable] ? "checked" : "" }>Vulnerable</div>" +
-    "<div class=filteritem>Maintainer: <input type=text name=m value=\"#{params[:m]}\"><br><input type=submit value=\"Apply Filter\"></div></form>"
+    "<div class=filteritem style=\"text-align: left\">" +
+    "<input type=checkbox name=vulnerable #{ params[:vulnerable] ? "checked" : "" }>Vulnerable<br>" +
+    "<input type=checkbox name=outdated #{ params[:outdated] ? "checked" : "" }>Outdated" +
+    "<input type=checkbox name=outdated_minor #{ params[:outdated_minor] ? "checked" : "" }>Minor " +
+    "<input type=checkbox name=outdated_major #{ params[:outdated_major] ? "checked" : "" }>Major " +
+    "</div><div class=filteritem>Maintainer: <input type=text name=m value=\"#{params[:m]}\"><br><input type=submit value=\"Apply Filter\"></div></form>"
   end
 end
 
