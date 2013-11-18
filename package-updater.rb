@@ -477,6 +477,13 @@ module PackageUpdater
     # handles GNU packages hosted at mirror://gnu/
     class GNU < Updater
 
+      def self.tarballs
+        unless @tarballs
+          @tarballs = Hash.new{|h,path| h[path] = tarballs_from_dir("http://ftpmirror.gnu.org#{path}") }
+        end
+        @tarballs
+      end
+
       def self.covers?(pkg)
         return( pkg.url and pkg.url =~ %r{^mirror://gnu(/[^/]*)/[^/]*$} and usable_version?(pkg.version) )
       end
@@ -485,8 +492,7 @@ module PackageUpdater
         return nil unless pkg.url
         return nil unless pkg.url =~ %r{^mirror://gnu(/[^/]*)/[^/]*$}
         path = $1
-        tarballs = tarballs_from_dir("http://ftpmirror.gnu.org#{path}")
-        return new_tarball_versions(pkg, tarballs)
+        return new_tarball_versions(pkg, tarballs[path])
       end
 
     end
