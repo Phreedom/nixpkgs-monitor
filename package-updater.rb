@@ -55,6 +55,11 @@ module PackageUpdater
       return [ package_name, file_version ]
     end
 
+    def self.parse_tarball_from_url(url)
+      return parse_tarball_name($1) if url =~ %r{/([^/]*)$}
+      log.info "Failed to parse url #{url}"
+      return [nil, nil]
+    end
 
     # FIXME: add support for X.Y.Z[-_]?(a|b|beta|c|r|rc|pre)?\d*
 
@@ -114,77 +119,67 @@ module PackageUpdater
 
     # check that package and tarball versions match
     def self.versions_match?(pkg)
-      url = pkg.url
-      if url =~ %r{/([^/]*)$}
-        file = $1
-        (package_name, file_version) = parse_tarball_name(file)
+      (package_name, file_version) = parse_tarball_from_url(pkg.url)
 
-        if file_version and package_name and true # test only
-          v1 = file_version.downcase
-          # removes haskell suffix, gimp plugin suffix and FIXME: linux version
-          # FIXME: linux version removal breaks a couple of matches
-          v2 = pkg.version.downcase
-          unless (v1 == v2) or (v1.gsub(/[-_]/,".") == v2) or (v1 == v2.gsub(".",""))
-            log.info "version mismatch: #{package_name} #{file_version} #{file} #{pkg.name} #{pkg.version}"
-            return false
-          end
-          return true
-        else
-          log.info "failed to parse tarball #{file} #{pkg.internal_name}"
+      if file_version and package_name and true # test only
+        v1 = file_version.downcase
+        # removes haskell suffix, gimp plugin suffix and FIXME: linux version
+        # FIXME: linux version removal breaks a couple of matches
+        v2 = pkg.version.downcase
+        unless (v1 == v2) or (v1.gsub(/[-_]/,".") == v2) or (v1 == v2.gsub(".",""))
+          log.info "version mismatch: #{package_name} #{file_version} #{pkg.url} #{pkg.name} #{pkg.version}"
+          return false
         end
+        return true
       else
-        log.info "failed to parse url #{url} #{pkg.internal_name}"
+        log.info "failed to parse tarball #{pkg.url} #{pkg.internal_name}"
       end
       return false
     end
 
 
     def self.new_tarball_versions(pkg, tarballs)
-      url = pkg.url;
-      if url =~ %r{/([^/]*)$}
-        file = $1
-        (package_name, file_version) = parse_tarball_name(file)
+      (package_name, file_version) = parse_tarball_from_url(pkg.url)
 
-        if file_version and package_name and true # test only
-          v1 = file_version.downcase
-          v2 = pkg.version.downcase
-          return nil unless versions_match?(pkg)
+      if file_version and package_name and true # test only
+        v1 = file_version.downcase
+        v2 = pkg.version.downcase
+        return nil unless versions_match?(pkg)
 
-          package_name = package_name.downcase
-          vlist = tarballs[package_name]
-          return nil unless vlist
-          t_pv = tokenize_version(v2)
-          return nil unless t_pv
-          max_version_major = v2
-          max_version_minor = v2
-          max_version_fix = v2
-          vlist.each do |v|
-            t_v = tokenize_version(v)
-            if t_v
-              #check for and skip 345.gz == v3.4.5 versions for now
-              if t_v[0]>9 and t_v[1] = -1 and t_pv[1] != -1 and t_v[0]>5*t_pv[0]
-                log.info "found weird(too high) version of #{package_name} : #{v}. skipping"
-              else
-                max_version_major = v if (t_v[0] != t_pv[0])  and is_newer?(v, max_version_major)
-                max_version_minor = v if (t_v[0] == t_pv[0]) and (t_v[1] != t_pv[1])  and is_newer?(v, max_version_minor)
-                max_version_fix = v if (t_v[0] == t_pv[0]) and (t_v[1] == t_pv[1]) and (t_v[2] != t_pv[2])  and is_newer?(v, max_version_fix)
-              end
+        package_name = package_name.downcase
+        vlist = tarballs[package_name]
+        return nil unless vlist
+        t_pv = tokenize_version(v2)
+        return nil unless t_pv
+        max_version_major = v2
+        max_version_minor = v2
+        max_version_fix = v2
+        vlist.each do |v|
+          t_v = tokenize_version(v)
+          if t_v
+            #check for and skip 345.gz == v3.4.5 versions for now
+            if t_v[0]>9 and t_v[1] = -1 and t_pv[1] != -1 and t_v[0]>5*t_pv[0]
+              log.info "found weird(too high) version of #{package_name} : #{v}. skipping"
             else
-              log.info "found weird version of #{package_name} : #{v}. skipping" 
+              max_version_major = v if (t_v[0] != t_pv[0])  and is_newer?(v, max_version_major)
+              max_version_minor = v if (t_v[0] == t_pv[0]) and (t_v[1] != t_pv[1])  and is_newer?(v, max_version_minor)
+              max_version_fix = v if (t_v[0] == t_pv[0]) and (t_v[1] == t_pv[1]) and (t_v[2] != t_pv[2])  and is_newer?(v, max_version_fix)
             end
+          else
+            log.info "found weird version of #{package_name} : #{v}. skipping" 
           end
-
-          return(
-              ((max_version_major == v2) and (max_version_minor == v2) and (max_version_fix == v2)) ? nil
-              : [
-                  (max_version_major != v2 ? max_version_major : nil),
-                  (max_version_minor != v2 ? max_version_minor : nil),
-                  (max_version_fix   != v2 ? max_version_fix   : nil)
-                ]
-          )
         end
 
+        return(
+            ((max_version_major == v2) and (max_version_minor == v2) and (max_version_fix == v2)) ? nil
+            : [
+                (max_version_major != v2 ? max_version_major : nil),
+                (max_version_minor != v2 ? max_version_minor : nil),
+                (max_version_fix   != v2 ? max_version_fix   : nil)
+              ]
+        )
       end
+      return nil
     end
 
 
@@ -244,8 +239,7 @@ module PackageUpdater
     def self.covers?(pkg)
       return false if Repository::CPAN.covers?(pkg) or Repository::Pypi.covers?(pkg) or
                       Repository::RubyGems.covers?(pkg) or Repository::Hackage.covers?(pkg)
-      return false unless %r{/(?<file>[^/]*)$} =~ pkg.url
-      (package_name, file_version) = parse_tarball_name(file)
+      (package_name, file_version) = parse_tarball_from_url(pkg.url)
 
       return( package_name and file_version  and distfiles[package_name] and
               usable_version?(pkg.version) and usable_version?(file_version) )
@@ -406,9 +400,8 @@ module PackageUpdater
       def self.newest_versions_of(pkg)
         return nil unless pkg.url
         return nil unless pkg.url.include? 'rubygems.org/downloads/'
-        return nil unless pkg.url =~ %r{/([^/]*)$}
-        file = $1
-        (package_name, file_version) = parse_tarball_name(file)
+        (package_name, file_version) = parse_tarball_from_url(pkg.url)
+        return nil unless package_name
         vdata =  http_agent.get("http://rubygems.org/api/v1/versions/#{package_name}.xml")
         @tarballs = {} unless @tarballs
         vdata.search('versions/version/number').each do |v|
