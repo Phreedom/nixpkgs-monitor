@@ -154,6 +154,9 @@ elsif action == :check_updates
         String :version_major
         String :version_minor
         String :version_fix
+        String :tarball_major
+        String :tarball_minor
+        String :tarball_fix
       end
 
       pkgs_to_check.each do |pkg|
@@ -164,12 +167,59 @@ elsif action == :check_updates
           DB[updater.friendly_name] << {
             :pkg_attr => pkg.internal_name,
             :version_major => new_ver[0],
+            :tarball_major => updater.find_tarball(pkg, new_ver[0]),
+
             :version_minor => new_ver[1],
-            :version_fix   => new_ver[2]
+            :tarball_minor => updater.find_tarball(pkg, new_ver[1]),
+
+            :version_fix   => new_ver[2],
+            :tarball_fix   => updater.find_tarball(pkg, new_ver[2]),
           }
         end
       end
 
+    end
+  end
+  
+  DB.transaction do
+    DB.create_table!(:tarballs) do
+      String :pkg_attr
+      String :version
+      String :tarball
+    end
+
+    updaters.each do |updater|
+      DB[updater.friendly_name].all.each do |row|
+        pkg = DistroPackage::Nix.by_internal_name[row[:pkg_attr]]
+
+        if row[:version_major]
+          tarball = updater.find_tarball(pkg, row[:version_major])
+
+          DB[:tarballs] << {
+            :pkg_attr => row[:pkg_attr],
+            :version => row[:version_major],
+            :tarball => tarball
+          } if tarball
+        end
+        if row[:version_minor]
+          tarball = updater.find_tarball(pkg, row[:version_minor])
+
+          DB[:tarballs] << {
+            :pkg_attr => row[:pkg_attr],
+            :version => row[:version_minor],
+            :tarball => tarball
+          } if tarball
+        end
+        if row[:version_fix]
+          tarball = updater.find_tarball(pkg, row[:version_fix])
+
+          DB[:tarballs] << {
+            :pkg_attr => row[:pkg_attr],
+            :version => row[:version_fix],
+            :tarball => tarball
+          } if tarball
+        end
+      end
     end
   end
 
