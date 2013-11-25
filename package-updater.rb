@@ -234,7 +234,7 @@ module PackageUpdater
 
 
     def self.find_tarball(pkg, version)
-      return nil unless pkg.url and version and pkg.url != "" and version != ""
+      return nil unless pkg.url and version and pkg.url != "" and version != "" and pkg.version != ""
       (pkg.url.include?(pkg.version) ? pkg.url.gsub(pkg.version, version) : nil )
     end
 
