@@ -330,7 +330,7 @@ module DistroPackage
   # which break matching because nixpks keeps only 1 of the packages
   # with the same name
   class Nix < Package
-    attr_accessor :homepage, :sha256, :maintainers
+    attr_accessor :homepage, :sha256, :maintainers, :position
     @cache_name = "nix"
 
     def version
@@ -345,7 +345,7 @@ module DistroPackage
 
 
     def serialize
-      return super.merge({ :homepage => @homepage, :sha256 => @sha256 })
+      return super.merge({ :homepage => @homepage, :sha256 => @sha256, :position => @position })
     end
 
 
@@ -353,6 +353,7 @@ module DistroPackage
       pkg = super(val)
       pkg.homepage = val[:homepage]
       pkg.sha256 = val[:sha256]
+      pkg.position = val[:position]
       pkg.maintainers = []
       return pkg
     end
@@ -366,6 +367,7 @@ module DistroPackage
         String :url
         String :revision
         String :sha256
+        String :position
         String :homepage
       end
 
@@ -430,6 +432,9 @@ module DistroPackage
 
           sha256 = entry.xpath('meta[@name="src.sha256"]').first
           package.sha256 = sha256[:value] if sha256
+
+          position = entry.xpath('meta[@name="position"]').first
+          package.position = position[:value].rpartition('/nixpkgs/')[2] if position
 
           homepage = entry.xpath('meta[@name="homepage"]').first
           package.homepage = homepage[:value] if homepage
