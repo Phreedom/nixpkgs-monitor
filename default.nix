@@ -7,6 +7,14 @@ let
   };
 
   required_gems = with pkgs.rubyLibs; [ mechanize sequel sqlite3 sinatra haml ];
+  nix_fresh = pkgs.lib.overrideDerivation pkgs.nix (a: {
+      src = pkgs.fetchurl {
+        url = http://hydra.nixos.org/build/6861519/download/5/nix-1.7pre3292_709cbe4.tar.xz;
+        sha256 = "1pajn8yrrh3dfkyp4xq1y30hrd6n8dbskd1dq13g4rpqn2kg1440";
+      };
+      doInstallCheck = false;
+      patches = [ ./expose-attrs.patch ];
+    });
 in
 with pkgs;
 stdenv.mkDerivation {
@@ -15,7 +23,7 @@ stdenv.mkDerivation {
   src = ./.;
 
   buildInputs = [
-    rubygems ruby makeWrapper swig2 nix 
+    rubygems ruby ruby makeWrapper nix_fresh
     boehmgc # Nix fails to propagate headers. TODO: upstream this
   ];
 
@@ -23,8 +31,8 @@ stdenv.mkDerivation {
   propagatedBuildInputs = required_gems;
 
 
-  NIX_CFLAGS_COMPILE="-I${nix}/include/nix";
-  NIX_LDFLAGS="-L${nix}/lib/nix";
+  NIX_CFLAGS_COMPILE="-I${nix_fresh}/include/nix";
+  NIX_LDFLAGS="-L${nix_fresh}/lib/nix";
 
   installPhase = ''
     addToSearchPath GEM_PATH $out/${ruby.gemPath}
@@ -34,7 +42,6 @@ stdenv.mkDerivation {
     cp distro-package.rb $gemlibpath
     cp package-updater.rb $gemlibpath
     cp security-advisory.rb $gemlibpath
-    echo $gemlibpath
 
     g++ nix-env-patched.cc -lexpr -lformat -lstore -lutil -lmain -lgc -o nix-env-patched
 

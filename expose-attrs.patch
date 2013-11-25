@@ -1,0 +1,21 @@
+diff --git a/src/libexpr/get-drvs.hh b/src/libexpr/get-drvs.hh
+index aaafff1..515a4cb 100644
+--- a/src/libexpr/get-drvs.hh
++++ b/src/libexpr/get-drvs.hh
+@@ -26,13 +26,15 @@ private:
+ 
+     bool failed; // set if we get an AssertionError
+ 
+-    Bindings * attrs, * meta;
++    Bindings * meta;
+ 
+     Bindings * getMeta();
+ 
+     bool checkMeta(Value & v);
+ 
+ public:
++    Bindings * attrs;
++
+     string name;
+     string attrPath; /* path towards the derivation */
+     string system;
