@@ -24,6 +24,7 @@ csv_report_file = nil
 action = nil
 pkgs_to_check = []
 do_cve_update = false
+tarballs_ignore_negative = false
 
 db_path = './db.sqlite'
 DB = Sequel.sqlite(db_path)
@@ -77,6 +78,14 @@ OptionParser.new do |o|
   o.on("--check-package PACKAGE", "Check what updates are available for PACKAGE") do |pkgname|
     action = :check_updates
     pkgs_to_check << DistroPackage::Nix.list[pkgname]
+  end
+
+  o.on("--tarballs", "Try downloading all the candidate tarballs to the nix store") do |pkgname|
+    action = :tarballs
+  end
+
+  o.on("--recheck", "Try downloading tarballs marked as not available again") do |pkgname|
+    tarballs_ignore_negative = true
   end
 
   o.on("--find-unmatched-advisories", "Find security advisories which don't map to a Nix package(don't touch yet)") do
@@ -240,6 +249,30 @@ elsif action == :check_updates
     end
   end
   File.write(csv_report_file, csv_string) if csv_report_file
+
+elsif action == :tarballs
+
+  DB.create_table?(:tarball_sha256) do
+    String :tarball, :unique => true, :primary_key => true
+    String :sha256
+  end
+
+  DB[:tarballs].all.each do |row|
+    tarball = row[:tarball]
+    hash = DB[:tarball_sha256][:tarball => tarball]
+    if not(hash) or (hash[:sha256] == "404" and tarballs_ignore_negative)
+      sha256 = %x(nix-prefetch-url #{tarball}).strip
+      if $? == 0
+        puts "found #{sha256} hash"
+      else
+        puts "tarball #{tarball} not found"
+        sha256 = "404"
+      end
+      if 1 != DB[:tarball_sha256].where(:tarball => tarball).update(:sha256 => sha256)
+        DB[:tarball_sha256] << { :tarball => tarball, :sha256 => sha256 }
+      end
+    end
+  end
 
 elsif action == :check_pkg_version_match
 
