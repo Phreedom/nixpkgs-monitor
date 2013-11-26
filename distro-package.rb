@@ -400,12 +400,17 @@ module DistroPackage
     end
 
 
+    def self.repository_path
+      "nixpkgs"
+    end
+
+
     def self.generate_list
       blacklist = []
       nix_list = {}
 
       puts %x(git clone https://github.com/NixOS/nixpkgs.git)
-      puts %x(cd nixpkgs && git pull --rebase)
+      puts %x(cd #{repository_path} && git pull --rebase)
 
       pkgs_xml = Nokogiri.XML(%x(nix-env-patched -qa '*' --attr-path --meta --xml --file ./nixpkgs/))
       pkgs_xml.xpath('items/item').each do|entry|
