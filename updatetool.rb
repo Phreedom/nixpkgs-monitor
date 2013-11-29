@@ -292,7 +292,8 @@ elsif action == :patches
 
   DB[:tarballs].join(:tarball_sha256,:tarball => :tarball).where("sha256 != '404'").distinct.all.each  do |row|
     nixpkg = DistroPackage::Nix.by_internal_name[row[:pkg_attr]]
-    #next unless nixpkg
+    next unless nixpkg
+
     file_name =  File.join(DistroPackage::Nix.repository_path, nixpkg.position.rpartition(':')[0])
     original_content = File.readlines(file_name)
     patched = original_content.map{|s| s.dup} # deep copy

@@ -97,6 +97,8 @@ helpers do
   def filter_packages(filter)
     Set.new( DistroPackage::Nix.by_internal_name.keys.select { |pkg|
       nixpkg = DistroPackage::Nix.by_internal_name[pkg]
+
+      nixpkg and
       # maintainer count
       (not filter[:mc] or filter[:mc] == "" or filter[:mc].to_i == nixpkg.maintainers.count) and
       # coverage
