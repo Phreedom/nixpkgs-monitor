@@ -443,13 +443,11 @@ module DistroPackage
 
 
     def self.load_package(pkg)
-      pkgs_xml = Nokogiri.XML(%x(nix-env-patched -qa '*' --attr-path --meta --xml --file ./nixpkgs/))
-      pkgs_xml.xpath('items/item').each do|entry|
-        next unless entry[:attrPath] == pkg
-        package = package_from_xml(entry)
-        return package if package and package.internal_name == pkg
-      end
-      return nil
+      pkgs_xml = Nokogiri.XML(%x(nix-env-patched -qaA '#{pkg}' --attr-path --meta --xml --file ./nixpkgs/))
+      entry = pkgs_xml.xpath('items/item').first
+      return nil unless entry and entry[:attrPath] == pkg
+      package = package_from_xml(entry)
+      return package if package and package.internal_name == pkg
     end
 
 
