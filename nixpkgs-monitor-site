@@ -288,6 +288,11 @@ get '/refresh' do
 end
 
 
+get '/rawdb' do
+  send_file 'db.sqlite'
+end
+
+
 get '/default.css' do
 <<STYLE
 body {
