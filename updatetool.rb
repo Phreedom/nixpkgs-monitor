@@ -88,6 +88,10 @@ OptionParser.new do |o|
     tarballs_ignore_negative = true
   end
 
+  o.on("--patches", "Generate patches for packages updates") do |pkgname|
+    action = :patches
+  end
+
   o.on("--find-unmatched-advisories", "Find security advisories which don't map to a Nix package(don't touch yet)") do
     action = :find_unmatched_advisories
   end
@@ -257,7 +261,7 @@ elsif action == :tarballs
     String :sha256
   end
 
-  DB[:tarballs].all.each do |row|
+  DB[:tarballs].distinct.all.each do |row|
     tarball = row[:tarball]
     hash = DB[:tarball_sha256][:tarball => tarball]
     if not(hash) or (hash[:sha256] == "404" and tarballs_ignore_negative)
@@ -272,6 +276,62 @@ elsif action == :tarballs
         DB[:tarball_sha256] << { :tarball => tarball, :sha256 => sha256 }
       end
     end
+  end
+
+elsif action == :patches
+
+  # this is the biggest and ugliest collection of hacks
+  DB.create_table!(:patches) do
+    String :pkg_attr
+    String :version
+    String :tarball
+    primary_key [ :pkg_attr, :version, :tarball ]
+    Text :patch
+    String :drv_hash
+  end
+
+  DB[:tarballs].join(:tarball_sha256,:tarball => :tarball).where("sha256 != '404'").distinct.all.each  do |row|
+    nixpkg = DistroPackage::Nix.by_internal_name[row[:pkg_attr]]
+    #next unless nixpkg
+    file_name =  File.join(DistroPackage::Nix.repository_path, nixpkg.position.rpartition(':')[0])
+    original_content = File.readlines(file_name)
+    patched = original_content.map{|s| s.dup} # deep copy
+
+    sha256_location =  patched.index{ |l| l.include? nixpkg.sha256 }
+    unless sha256_location
+      puts "failed to find the original hash value to replace for #{row[:pkg_attr]}"
+      next
+    end
+    patched[sha256_location].sub!(nixpkg.sha256, row[:sha256])
+
+    src_url_location = patched.index{ |l| l =~ /url\s*=.*;/ and l.include? nixpkg.url }
+    patched[src_url_location].sub!(nixpkg.url, row[:tarball]) if src_url_location
+
+    # a stupid heuristic targetting name = "..."; version = "..."; and such
+    version_location = patched.index{ |l| l =~ /[nv].*=.*".*".*;/ and l.include? nixpkg.version }
+    unless version_location
+      puts "failed to find the original version value to replace for #{row[:pkg_attr]}"
+      next
+    end
+    patched[version_location].sub!(nixpkg.version, row[:version])
+
+    File.write(file_name, patched.join)
+    patch = %x(cd #{DistroPackage::Nix.repository_path} && git diff)
+    new_pkg = DistroPackage::Nix.load_package(row[:pkg_attr])
+    #puts new_pkg.inspect
+    if new_pkg and new_pkg.url == row[:tarball] and new_pkg.sha256 == row[:sha256] and new_pkg.version == row[:version]
+      DB[:patches] << {
+          :pkg_attr => row[:pkg_attr],
+          :version => row[:version],
+          :tarball => row[:tarball],
+          :patch => patch,
+          :drv_hash => ""
+      }
+    else
+      puts "patch failed to change version, url or hash for #{row[:pkg_attr]}"
+    end
+    File.write(file_name, original_content.join)
+    #exit
   end
 
 elsif action == :check_pkg_version_match
