@@ -441,6 +441,18 @@ module DistroPackage
       return nil
     end
 
+
+    def self.load_package(pkg)
+      pkgs_xml = Nokogiri.XML(%x(nix-env-patched -qa '*' --attr-path --meta --xml --file ./nixpkgs/))
+      pkgs_xml.xpath('items/item').each do|entry|
+        next unless entry[:attrPath] == pkg
+        package = package_from_xml(entry)
+        return package if package and package.internal_name == pkg
+      end
+      return nil
+    end
+
+
     def self.generate_list
       nix_list = {}
 
