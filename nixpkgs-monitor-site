@@ -227,11 +227,17 @@ get '/outdated' do
             <tr><td>#{pkg}</td><td>#{nixpkg.version}</td>
             <td>#{v.
                 select { |version, updaters| not is_major_update?(nixpkg, version) }.
-                map { |version, updaters| "<span title=\"#{updaters.join(', ')}\">#{version}</span>" }.
+                map { |version, updaters| "<span title=\"#{updaters.join(', ')}\">#{version}#{
+                      patch_record = DB[:patches][:pkg_attr => pkg, :version => version]
+                      patch_record ? "(<a href=/patch?p=#{pkg}&v=#{version}>p</a>)" : ""
+                    }</span>" }.
                 join(', ')
             }</td><td>#{v.
                 select { |version, updaters| is_major_update?(nixpkg, version) }.
-                map { |version, updaters| "<span title=\"#{updaters.join(', ')}\">#{version}</span>" }.
+                map { |version, updaters| "<span title=\"#{updaters.join(', ')}\">#{version}#{
+                      patch_record = DB[:patches][:pkg_attr => pkg, :version => version]
+                      patch_record ? "(<a href=/patch?p=#{pkg}&v=#{version}>p</a>)" : ""
+                    }</span>" }.
                 join(', ')
             }</td>
         }
@@ -241,6 +247,20 @@ get '/outdated' do
     haml :outdated, :locals => { :outdated_report => report, :filter => render_filter(params.merge({:outdated => true})) }
 end
 
+
+get '/patch' do
+  patch_record = DB[:patches][:pkg_attr => params[:p], :version => params[:v]]
+  halt(404, 'no matching patch found') unless patch_record
+  content_type 'text/plain', :charset => 'utf-8'
+  %{
+From: Nixpkgs Monitor <none@none>
+Subject: #{params[:p]}: update from #{DistroPackage::Nix.by_internal_name[params[:p]].version} to #{params[:v]}#{
+  vulnerable.has_key?(params[:p]) ? ", potentially fixes #{vulnerable[params[:p]].values.map{|s| s.to_a}.flatten.join(', ')}": ""
+}
+
+#{patch_record[:patch]}
+  }
+end
 
 get '/vulnerable' do
   filtered = filter_packages(params)
