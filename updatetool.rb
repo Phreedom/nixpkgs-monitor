@@ -266,7 +266,7 @@ elsif action == :tarballs
     hash = DB[:tarball_sha256][:tarball => tarball]
     if not(hash) or (hash[:sha256] == "404" and tarballs_ignore_negative)
       sha256 = %x(nix-prefetch-url #{tarball}).strip
-      if $? == 0
+      if $? == 0 and sha256 != ""
         puts "found #{sha256} hash"
       else
         puts "tarball #{tarball} not found"
