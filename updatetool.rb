@@ -312,6 +312,8 @@ elsif action == :patches
     end
     patched = original_content.map{|s| s.dup} # deep copy
     patched[sha256_location].sub!(nixpkg.sha256, row[:sha256])
+    patched[sha256_location].sub!(/md5\s*=/, "sha256 =")
+    patched[sha256_location].sub!(/sha1\s*=/, "sha256 =")
 
     src_url_location = patched.index{ |l| l =~ /url\s*=.*;/ and l.include? nixpkg.url }
     patched[src_url_location].sub!(nixpkg.url, row[:tarball]) if src_url_location
