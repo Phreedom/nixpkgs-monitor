@@ -21,15 +21,14 @@ log.formatter = proc { |severity, datetime, progname, msg|
 Log = log
 
 csv_report_file = nil
-action = nil
+actions = Set.new
 pkgs_to_check = []
-do_cve_update = false
 tarballs_ignore_negative = false
 
 db_path = './db.sqlite'
 DB = Sequel.sqlite(db_path)
 
-distros_to_update = []
+distros_to_update = Set.new
 
 updaters = Updaters
 
@@ -63,7 +62,7 @@ OptionParser.new do |o|
   end
 
   o.on("--check-pkg-version-match", "List Nix packages for which either tarball can't be parsed or its version doesn't match the package version") do
-    action = :check_pkg_version_match
+    actions << :check_pkg_version_match
   end
 
   o.on("--updater UPDATER", "Check for updates using only UPDATER. Accepts partial names.") do |uname|
@@ -71,17 +70,17 @@ OptionParser.new do |o|
   end
 
   o.on("--check-updates", "list NixPkgs packages which have updates available") do
-    action = :check_updates
+    actions << :check_updates
     pkgs_to_check += DistroPackage::Nix.packages
   end
 
   o.on("--check-package PACKAGE", "Check what updates are available for PACKAGE") do |pkgname|
-    action = :check_updates
+    actions << :check_updates
     pkgs_to_check << DistroPackage::Nix.list[pkgname]
   end
 
   o.on("--tarballs", "Try downloading all the candidate tarballs to the nix store") do |pkgname|
-    action = :tarballs
+    actions << :tarballs
   end
 
   o.on("--recheck", "Try downloading tarballs marked as not available again") do |pkgname|
@@ -89,23 +88,29 @@ OptionParser.new do |o|
   end
 
   o.on("--patches", "Generate patches for packages updates") do |pkgname|
-    action = :patches
+    actions << :patches
   end
 
   o.on("--find-unmatched-advisories", "Find security advisories which don't map to a Nix package(don't touch yet)") do
-    action = :find_unmatched_advisories
+    actions << :find_unmatched_advisories
   end
 
   o.on("--cve-update", "Fetch CVE updates") do
-    do_cve_update = true
+    actions << :cve_update
   end
 
   o.on("--cve-check", "Check NixPkgs against CVE database") do
-    action = :cve_check
+    actions << :cve_check
   end
 
   o.on("--coverage", "list NixPkgs packages which have (no) update coverage") do
-    action = :coverage
+    actions << :coverage
+  end
+
+  o.on("--all", "Update package definitions, check for updates, vulnerabilities, tarballs and write patches") do
+    actions.merge([ :coverage, :check_updates, :cve_check, :cve_update, :tarballs, :patches ])
+    distros_to_update.merge([ DistroPackage::Arch, DistroPackage::Nix, DistroPackage::Debian, DistroPackage::Gentoo ])
+    pkgs_to_check += DistroPackage::Nix.packages
   end
 
   o.on("-h", "--help", "Show this message") do
@@ -120,13 +125,14 @@ OptionParser.new do |o|
   end
 end
 
-abort "No action requested. See --help for more information." unless distros_to_update != [] or action or do_cve_update
+abort "No action requested. See --help for more information." unless distros_to_update.count > 0 or actions.count > 0
 
 distros_to_update.each do |distro|
   log.debug distro.generate_list.inspect
 end
 
-if action == :coverage
+
+if actions.include? :coverage
 
   coverage = {}
   DistroPackage::Nix.packages.each do |pkg|
@@ -156,8 +162,8 @@ if action == :coverage
   hard_to_cover = notcovered.select{ |pkg| pkg.url == nil or pkg.url == "" or pkg.url == "none" }
   puts "Hard to cover #{hard_to_cover.count} packages: #{hard_to_cover.map{|pkg| "#{pkg.name}:#{pkg.version}"}.inspect}"
 
-
-elsif action == :check_updates
+end
+if actions.include? :check_updates
 
   updaters.each do |updater|
     DB.transaction do
@@ -254,7 +260,8 @@ elsif action == :check_updates
   end
   File.write(csv_report_file, csv_string) if csv_report_file
 
-elsif action == :tarballs
+end
+if actions.include? :tarballs
 
   DB.create_table?(:tarball_sha256) do
     String :tarball, :unique => true, :primary_key => true
@@ -278,7 +285,8 @@ elsif action == :tarballs
     end
   end
 
-elsif action == :patches
+end
+if actions.include? :patches
 
   # this is the biggest and ugliest collection of hacks
   DB.create_table!(:patches) do
@@ -345,7 +353,8 @@ elsif action == :patches
     #exit
   end
 
-elsif action == :check_pkg_version_match
+end
+if actions.include? :check_pkg_version_match
 
   DB.transaction do
     DB.create_table!(:version_mismatch) do
@@ -360,7 +369,8 @@ elsif action == :check_pkg_version_match
     end
   end
 
-elsif action == :find_unmatched_advisories
+end
+if actions.include? :find_unmatched_advisories
 
   known_safe = [
     # these advisories don't apply because they have been checked to refer to packages that don't exist in nixpgs
@@ -379,10 +389,10 @@ elsif action == :find_unmatched_advisories
 end
 
 
-SecurityAdvisory::CVE.fetch_updates if do_cve_update
+SecurityAdvisory::CVE.fetch_updates if actions.include? :cve_update
 
 
-if action == :cve_check
+if actions.include? :cve_check
 
   def sorted_hash_to_s(tokens)
     tokens.keys.sort{|x,y| tokens[x] <=> tokens[y] }.map{|t| "#{t}: #{tokens[t]}"}.join("\n")
