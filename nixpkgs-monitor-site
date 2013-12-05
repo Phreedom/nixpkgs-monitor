@@ -226,7 +226,12 @@ get '/outdated' do
       map do |pkg, v|
         nixpkg = DistroPackage::Nix.by_internal_name[pkg]
         %{
-            <tr><td>#{pkg}</td><td>#{nixpkg.version}</td>
+            <tr><td>#{pkg}#{
+              vulnerable.has_key?(pkg) ?
+                "<span class=vuln title=\"Matches #{ vulnerable[pkg].keys.join(', ')}\">(V)</span>" : ""
+            }
+            </td>
+            <td>#{nixpkg.version}</td>
             <td>#{v.
                 select { |version, updaters| not is_major_update?(nixpkg, version) }.
                 map { |version, updaters| "<span title=\"#{updaters.join(', ')}\">#{version}#{
@@ -263,6 +268,7 @@ Subject: #{params[:p]}: update from #{DistroPackage::Nix.by_internal_name[params
 #{patch_record[:patch]}
   }
 end
+
 
 get '/vulnerable' do
   filtered = filter_packages(params)
@@ -319,6 +325,7 @@ div.dashitem th {
     border-bottom: dotted 1px;
 }
 div.filteritem { float: left; text-align: right; padding: 0 1em }
+span.vuln { color:red }
 a { text-decoration: none; }
 a:hover { text-decoration: underline; }
 a:link { color: #0048b3; }
