@@ -209,7 +209,7 @@ get '/coverage' do
       select{ |pkg, c| filtered.include? pkg }.
       sort_by{ |pkg, c| c }.
       map{ |pkg, c| %{
-        <tr><td>#{pkg}</td><td>#{c}</td>
+        <tr><td><a href="/pd?p=#{pkg}">#{pkg}</a></td><td>#{c}</td>
         <td>#{DistroPackage::Nix.by_internal_name[pkg].maintainers.count}</td></tr>
       } }.
       join
@@ -226,7 +226,7 @@ get '/outdated' do
       map do |pkg, v|
         nixpkg = DistroPackage::Nix.by_internal_name[pkg]
         %{
-            <tr><td>#{pkg}#{
+            <tr><td><a href="/pd?p=#{pkg}">#{pkg}</a>#{
               vulnerable.has_key?(pkg) ?
                 "<span class=vuln title=\"Matches #{ vulnerable[pkg].keys.join(', ')}\">(V)</span>" : ""
             }
@@ -277,7 +277,7 @@ get '/vulnerable' do
       sort_by{ |pkg, v| pkg }.
       map do |pkg, candidates|
         candidates.map{ |prod, cves| %{
-            <tr><td>#{pkg}:#{DistroPackage::Nix.by_internal_name[pkg].version}</td>
+            <tr><td><a href="/pd?p=#{pkg}">#{pkg}:#{DistroPackage::Nix.by_internal_name[pkg].version}</a></td>
             <td>#{prod}</td><td>#{cves.to_a.join(', ') }</td></tr>
         } }.
         join
@@ -285,6 +285,66 @@ get '/vulnerable' do
       join
 
   haml :vulnerable, :locals => { :vulnerable_report => report, :filter => render_filter(params.merge({:vulnerable => true})) }
+end
+
+
+get '/pd' do
+  halt "package not specified" unless params[:p]
+  pkg = DistroPackage::Nix.by_internal_name[params[:p]]
+  halt "package not found" unless pkg
+  %{
+    <link rel="stylesheet" href="/default.css" type="text/css" />
+    <table>
+      <tr><td>Package:</td><td>#{pkg.internal_name}</td>
+      <tr><td>Name:</td><td>#{pkg.name}</td>
+      <tr><td>Version:</td><td>#{pkg.version}</td>
+      <tr><td>Source:</td><td>#{pkg.url}</td>
+      <tr><td>Vulnerable:</td><td>#{vulnerable.has_key?(pkg.internal_name) ? "<span class=vuln>YES</span>" : "no"}</td>
+    </table>
+    #{ vulnerable.has_key?(pkg.internal_name) ?
+      %{
+        <table>
+        <th><tr><td>Matches to</td><td>CVEs</td>
+        #{
+          vulnerable[pkg.internal_name].
+              map do |prod, cves|
+                %{
+                  <tr>
+                  <td>#{prod}</td>
+                  <td>#{cves.to_a.
+                          map{|cve| %{<a href="http://web.nvd.nist.gov/view/vuln/detail?vulnId=#{cve.upcase}">#{cve}</a>} }.
+                          join(', ')
+                      }
+                  </td>
+                  </tr>
+                }
+              end.
+              join
+        }
+        </table>
+      } : ""
+    }
+    
+    <p>Available updates:
+    <table>
+    <th><tr><td>Version</td><td>Reported by</td><td>Tarball</td><td>Patch</td>
+    #{
+      outdated[params[:p]].map do |version, updaters|
+        %{<tr>
+          <td>#{version}</td>
+          <td>#{updaters.join ", "}</td>
+          <td>#{
+            tarball = DB[:tarballs].join(:tarball_sha256,:tarball => :tarball)[:pkg_attr => pkg.internal_name, :version => version]
+            tarball and tarball[:sha256] != '404' ? tarball [:tarball] : ""
+          }</td>
+          <td>#{DB[:patches][:pkg_attr => pkg.internal_name, :version => version] ? "<a href=/patch?p=#{pkg.internal_name}&v=#{version}>yes</a>" : ""}</td>
+          </tr>
+        }
+      end.
+      join
+    }
+    </table>
+  }
 end
 
 
