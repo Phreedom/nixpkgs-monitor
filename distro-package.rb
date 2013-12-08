@@ -455,7 +455,7 @@ module DistroPackage
       nix_list = {}
 
       puts %x(git clone https://github.com/NixOS/nixpkgs.git)
-      puts %x(cd #{repository_path} && git pull --rebase)
+      puts %x(cd #{repository_path} && git checkout master --force && git pull --rebase)
 
       pkgs_xml = Nokogiri.XML(%x(nix-env-patched -qa '*' --attr-path --meta --xml --file ./nixpkgs/))
       pkgs_xml.xpath('items/item').each do|entry|
