@@ -22,7 +22,7 @@ Log = log
 
 csv_report_file = nil
 actions = Set.new
-pkgs_to_check = []
+pkg_names_to_check = []
 tarballs_ignore_negative = false
 
 db_path = './db.sqlite'
@@ -71,23 +71,22 @@ OptionParser.new do |o|
 
   o.on("--check-updates", "list NixPkgs packages which have updates available") do
     actions << :check_updates
-    pkgs_to_check += DistroPackage::Nix.packages
   end
 
   o.on("--check-package PACKAGE", "Check what updates are available for PACKAGE") do |pkgname|
     actions << :check_updates
-    pkgs_to_check << DistroPackage::Nix.list[pkgname]
+    pkg_names_to_check << pkgname
   end
 
-  o.on("--tarballs", "Try downloading all the candidate tarballs to the nix store") do |pkgname|
+  o.on("--tarballs", "Try downloading all the candidate tarballs to the nix store") do
     actions << :tarballs
   end
 
-  o.on("--recheck", "Try downloading tarballs marked as not available again") do |pkgname|
+  o.on("--recheck", "Try downloading tarballs marked as not available again") do
     tarballs_ignore_negative = true
   end
 
-  o.on("--patches", "Generate patches for packages updates") do |pkgname|
+  o.on("--patches", "Generate patches for packages updates") do
     actions << :patches
   end
 
@@ -110,7 +109,6 @@ OptionParser.new do |o|
   o.on("--all", "Update package definitions, check for updates, vulnerabilities, tarballs and write patches") do
     actions.merge([ :coverage, :check_updates, :cve_check, :cve_update, :tarballs, :patches ])
     distros_to_update.merge([ DistroPackage::Arch, DistroPackage::Nix, DistroPackage::Debian, DistroPackage::Gentoo ])
-    pkgs_to_check += DistroPackage::Nix.packages
   end
 
   o.on("-h", "--help", "Show this message") do
@@ -164,6 +162,11 @@ if actions.include? :coverage
 
 end
 if actions.include? :check_updates
+
+  pkgs_to_check = ( pkg_names_to_check.empty? ?
+                    DistroPackage::Nix.packages :
+                    pkg_names_to_check.map{ |pkgname| DistroPackage::Nix.list[pkgname] }
+                  )
 
   updaters.each do |updater|
     DB.transaction do
@@ -309,7 +312,6 @@ if actions.include? :patches
     unless sha256_location
       #puts "failed to find the original hash value in the file reported to contain the derivation for #{row[:pkg_attr]}. Grepping for it instead"
       file_name =  %x(grep -ir '#{nixpkg.sha256}' -rl #{File.join(DistroPackage::Nix.repository_path, 'pkgs')}).split("\n")[0]
-      #puts "2: #{file_name.inspect}"
       original_content = File.readlines(file_name)
 
       sha256_location =  original_content.index{ |l| l.include? nixpkg.sha256 }
