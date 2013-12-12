@@ -330,27 +330,31 @@ get '/pd' do
         </table>
       } : ""
     }
-    
-    <p>Available updates:
-    <table>
-    <th><tr><td>Version</td><td>Reported by</td><td>Tarball</td><td>Patch</td><td>Log</td>
-    #{
-      outdated[params[:p]].map do |version, updaters|
-        patch = DB[:patches][:pkg_attr => pkg.internal_name, :version => version]
-        build = (patch ? DB[:builds][:outpath => patch[:outpath]] : nil)
-        %{<tr>
-          <td>#{version}</td>
-          <td>#{updaters.join ", "}</td>
-          <td>#{
-            tarball = DB[:tarballs].join(:tarball_sha256,:tarball => :tarball)[:pkg_attr => pkg.internal_name, :version => version]
-            tarball and tarball[:sha256] != '404' ? tarball [:tarball] : ""
-          }</td>
-          <td>#{ patch ? "<a href=/patch?p=#{pkg.internal_name}&v=#{version}>yes</a>" : "" }</td>
-          <td>#{ build ? "<a href=/buildlog?outpath=#{build[:outpath]}>#{build[:status]}</a>" : "" }</td>
-          </tr>
+
+    #{ outdated.has_key?(pkg.internal_name) ?
+      %{
+        <p>Available updates:
+        <table>
+        <th><tr><td>Version</td><td>Reported by</td><td>Tarball</td><td>Patch</td><td>Log</td>
+        #{
+          outdated[params[:p]].map do |version, updaters|
+            patch = DB[:patches][:pkg_attr => pkg.internal_name, :version => version]
+            build = (patch ? DB[:builds][:outpath => patch[:outpath]] : nil)
+            %{<tr>
+              <td>#{version}</td>
+              <td>#{updaters.join ", "}</td>
+              <td>#{
+                tarball = DB[:tarballs].join(:tarball_sha256,:tarball => :tarball)[:pkg_attr => pkg.internal_name, :version => version]
+                tarball and tarball[:sha256] != '404' ? tarball [:tarball] : ""
+              }</td>
+              <td>#{ patch ? "<a href=/patch?p=#{pkg.internal_name}&v=#{version}>yes</a>" : "" }</td>
+              <td>#{ build ? "<a href=/buildlog?outpath=#{build[:outpath]}>#{build[:status]}</a>" : "" }</td>
+              </tr>
+            }
+          end.
+          join
         }
-      end.
-      join
+      } : ""
     }
     </table>
   }
