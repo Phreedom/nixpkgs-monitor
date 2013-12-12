@@ -170,6 +170,11 @@ helpers do
     end.
     join(', ')
   end
+
+  def render_cve(cve)
+    %{<a href="http://web.nvd.nist.gov/view/vuln/detail?vulnId=#{cve.upcase}" class=cve>#{cve.upcase}</a>}
+  end
+
 end
 
 
@@ -283,7 +288,7 @@ get '/vulnerable' do
       map do |pkg, candidates|
         candidates.map{ |prod, cves| %{
             <tr><td><a href="/pd?p=#{pkg}" class=pkglink data-target=#{pkg}>#{pkg}:#{DistroPackage::Nix.by_internal_name[pkg].version}</a></td>
-            <td>#{prod}</td><td>#{cves.to_a.join(', ') }</td></tr>
+            <td>#{prod}</td><td>#{cves.to_a.map{|cve| render_cve(cve)}.join(', ') }</td></tr>
             <tr><td colspan=3 id=#{pkg}></td>
         } }.
         join
@@ -318,7 +323,7 @@ get '/pd' do
                   <tr>
                   <td>#{prod}</td>
                   <td>#{cves.to_a.
-                          map{|cve| %{<a href="http://web.nvd.nist.gov/view/vuln/detail?vulnId=#{cve.upcase}">#{cve}</a>} }.
+                          map{|cve| render_cve(cve) }.
                           join(', ')
                       }
                   </td>
