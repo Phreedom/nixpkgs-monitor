@@ -24,6 +24,7 @@ csv_report_file = nil
 actions = Set.new
 pkg_names_to_check = []
 tarballs_ignore_negative = false
+builds_ignore_negative = false
 
 db_path = './db.sqlite'
 DB = Sequel.sqlite(db_path)
@@ -88,6 +89,14 @@ OptionParser.new do |o|
 
   o.on("--patches", "Generate patches for packages updates") do
     actions << :patches
+  end
+
+  o.on("--build", "Try building patches") do
+    actions << :build
+  end
+
+  o.on("--rebuild", "Try building patches marked as failed again") do
+    builds_ignore_negative = true
   end
 
   o.on("--find-unmatched-advisories", "Find security advisories which don't map to a Nix package(don't touch yet)") do
@@ -298,7 +307,8 @@ if actions.include? :patches
     String :tarball
     primary_key [ :pkg_attr, :version, :tarball ]
     Text :patch
-    String :drv_hash
+    String :drvpath
+    String :outpath
   end
 
   DB[:tarballs].join(:tarball_sha256,:tarball => :tarball).where("sha256 != '404'").distinct.all.each  do |row|
@@ -307,7 +317,6 @@ if actions.include? :patches
 
     file_name =  File.join(DistroPackage::Nix.repository_path, nixpkg.position.rpartition(':')[0])
     original_content = File.readlines(file_name)
-
     sha256_location =  original_content.index{ |l| l.include? nixpkg.sha256 }
     unless sha256_location
       #puts "failed to find the original hash value in the file reported to contain the derivation for #{row[:pkg_attr]}. Grepping for it instead"
@@ -346,13 +355,51 @@ if actions.include? :patches
           :version => row[:version],
           :tarball => row[:tarball],
           :patch => patch,
-          :drv_hash => ""
+          :drvpath => new_pkg.drvpath,
+          :outpath => new_pkg.outpath
       }
     else
       puts "patch failed to change version, url or hash for #{row[:pkg_attr]}"
     end
     File.write(file_name, original_content.join)
     #exit
+  end
+
+end
+if actions.include? :build
+
+  DB.create_table?(:builds) do
+    String :outpath, :unique => true, :primary_key => true
+    String :status
+    String :log
+  end
+
+  DB[:patches].distinct.all.each do |row|
+    outpath = row[:outpath]
+    build = DB[:builds][:outpath => outpath]
+    if not(build) or (build[:status] != "ok" and builds_ignore_negative)
+      Dir.chdir(DistroPackage::Nix.repository_path) do
+        puts %x(git checkout master --force)
+        IO.popen('patch -p1', "r+") { |f| f.write row[:patch]; f.close_write; Process.wait(f.pid) }
+        if $?.to_i == 0
+          puts "trying to build"
+          puts "nix-build -A #{row[:pkg_attr]} 2>&1"
+          puts %x(pwd)
+          puts %x(nix-build -A #{row[:pkg_attr]} 2>&1)
+          status = ($? == 0 ? "ok" : "failed")
+          log_path = row[:drvpath].sub(%r{^/nix/store/}, "")
+          log_path = "/nix/var/log/nix/drvs/#{log_path[0,2]}/#{log_path[2,100]}.bz2"
+          log = %x(bzcat #{log_path})
+
+          if 1 != DB[:builds].where(:outpath => outpath).update(:status => status, :log => log.encode("us-ascii", :invalid=>:replace, :undef => :replace))
+            DB[:builds] << { :outpath => outpath, :status => status, :log => log.encode("us-ascii", :invalid=>:replace, :undef => :replace) }
+          end
+        else
+          puts "failed to run patch"
+        end
+        puts %x(git checkout master --force)
+      end
+    end
   end
 
 end
