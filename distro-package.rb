@@ -330,7 +330,7 @@ module DistroPackage
   # which break matching because nixpks keeps only 1 of the packages
   # with the same name
   class Nix < Package
-    attr_accessor :homepage, :sha256, :maintainers, :position
+    attr_accessor :homepage, :sha256, :maintainers, :position, :outpath, :drvpath
     @cache_name = "nix"
 
     def version
@@ -411,6 +411,11 @@ module DistroPackage
         package = ( name =~ /(.*?)-([^A-Za-z].*)/ ? Nix.new(attr, $1, $2) : Nix.new(attr, name, "") )
         puts "failed to parse name for #{attr} #{name}" if package.version == ""
 
+        package.drvpath = pkg_xml[:drvPath]
+
+        outpath = pkg_xml.xpath('output[@name="out"]').first
+        package.outpath = outpath[:path] if outpath
+
         url = pkg_xml.xpath('meta[@name="repositories.git"]').first
         package.url = url[:value] if url
 
@@ -443,7 +448,7 @@ module DistroPackage
 
 
     def self.load_package(pkg)
-      pkgs_xml = Nokogiri.XML(%x(nix-env-patched -qaA '#{pkg}' --attr-path --meta --xml --file ./nixpkgs/))
+      pkgs_xml = Nokogiri.XML(%x(nix-env-patched -qaA '#{pkg}' --attr-path --meta --xml --out-path --drv-path --file ./nixpkgs/))
       entry = pkgs_xml.xpath('items/item').first
       return nil unless entry and entry[:attrPath] == pkg
       package = package_from_xml(entry)
