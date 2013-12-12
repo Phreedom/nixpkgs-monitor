@@ -222,8 +222,9 @@ get '/coverage' do
       select{ |pkg, c| filtered.include? pkg }.
       sort_by{ |pkg, c| c }.
       map{ |pkg, c| %{
-        <tr><td><a href="/pd?p=#{pkg}">#{pkg}</a></td><td>#{c}</td>
+        <tr><td><a href="/pd?p=#{pkg}" class=pkglink data-target=#{pkg}>#{pkg}</a></td><td>#{c}</td>
         <td>#{DistroPackage::Nix.by_internal_name[pkg].maintainers.count}</td></tr>
+        <tr><td colspan=3 id=#{pkg}></td>
       } }.
       join
 
@@ -239,7 +240,7 @@ get '/outdated' do
       map do |pkg, v|
         nixpkg = DistroPackage::Nix.by_internal_name[pkg]
         %{
-            <tr><td><a href="/pd?p=#{pkg}">#{pkg}</a>#{
+            <tr><td><a href="/pd?p=#{pkg}" class=pkglink data-target=#{pkg}>#{pkg}</a>#{
               vulnerable.has_key?(pkg) ?
                 "<span class=vuln title=\"Matches #{ vulnerable[pkg].keys.join(', ')}\">(V)</span>" : ""
             }
@@ -250,6 +251,7 @@ get '/outdated' do
             }</td><td>#{
                 render_versions(pkg, v.select { |version, updaters| is_major_update?(nixpkg, version) })
             }</td>
+            <tr><td colspan=4 id=#{pkg}></td>
         }
       end.
       join
@@ -280,8 +282,9 @@ get '/vulnerable' do
       sort_by{ |pkg, v| pkg }.
       map do |pkg, candidates|
         candidates.map{ |prod, cves| %{
-            <tr><td><a href="/pd?p=#{pkg}">#{pkg}:#{DistroPackage::Nix.by_internal_name[pkg].version}</a></td>
+            <tr><td><a href="/pd?p=#{pkg}" class=pkglink data-target=#{pkg}>#{pkg}:#{DistroPackage::Nix.by_internal_name[pkg].version}</a></td>
             <td>#{prod}</td><td>#{cves.to_a.join(', ') }</td></tr>
+            <tr><td colspan=3 id=#{pkg}></td>
         } }.
         join
       end.
@@ -407,6 +410,36 @@ a.no-hover:hover { background: none; }
 STYLE
 end
 
+
+get '/packagedetails.js' do
+<<DETAILS
+function showPackageDetails(obj) {
+  var elem = document.getElementById(obj.dataset.target);
+  elem.innerHTML = "querying...";
+  var xmlhttp = new XMLHttpRequest();
+  xmlhttp.onreadystatechange = function() {
+    if (xmlhttp.readyState==4 && xmlhttp.status==200) {
+      elem.innerHTML=xmlhttp.responseText;
+    }
+  }
+  xmlhttp.open("GET","/pd?p=" + obj.dataset.target,true);
+  xmlhttp.send();
+  return true;
+}
+
+var list = document.getElementsByClassName('pkglink');
+for (var i = 0; i < list.length; i++) {
+  list[i].onclick = (function(obj) {
+    return function() {
+      return !showPackageDetails(obj);
+    }
+  })(list[i]);
+}
+
+DETAILS
+end
+
+
 __END__
 
 @@dashboard
@@ -465,6 +498,8 @@ __END__
       %th Maintainers
     = coverage_report
 
+<script type="text/javascript" src="/packagedetails.js"></script>
+
 
 @@outdated
 
@@ -482,6 +517,8 @@ __END__
       %th Major Update(s)
     = outdated_report
 
+<script type="text/javascript" src="/packagedetails.js"></script>
+
 
 @@vulnerable
 
@@ -497,3 +534,5 @@ __END__
       %th CVE Product
       %th CVE ID(s)
     = vulnerable_report
+
+<script type="text/javascript" src="/packagedetails.js"></script>
