@@ -376,6 +376,7 @@ end
 
 
 get '/default.css' do
+  content_type 'text/css', :charset => 'utf-8'
 <<STYLE
 body {
     background-color: #707070;
@@ -412,6 +413,7 @@ end
 
 
 get '/packagedetails.js' do
+  content_type 'text/javascript', :charset => 'utf-8'
 <<DETAILS
 function showPackageDetails(obj) {
   var elem = document.getElementById(obj.dataset.target);
