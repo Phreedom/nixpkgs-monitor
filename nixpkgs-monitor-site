@@ -157,6 +157,19 @@ helpers do
       </form>
     }
   end
+
+  def render_versions(pkg, versions)
+    versions.map do |version, updaters|
+      patch_record = DB[:patches][:pkg_attr => pkg, :version => version]
+      build_record = (patch_record ? DB[:builds][:outpath => patch_record[:outpath]] : nil)
+      patch_status = build_record ? (build_record[:status] == "ok" ? "P" : "f" ) : "p" 
+
+      "<span title=\"#{updaters.join(', ')}\">#{version}#{
+                      patch_record ? "(<a href=/patch?p=#{pkg}&v=#{version}>#{patch_status}</a>)" : ""
+                    }</span>"
+    end.
+    join(', ')
+  end
 end
 
 
@@ -232,20 +245,10 @@ get '/outdated' do
             }
             </td>
             <td>#{nixpkg.version}</td>
-            <td>#{v.
-                select { |version, updaters| not is_major_update?(nixpkg, version) }.
-                map { |version, updaters| "<span title=\"#{updaters.join(', ')}\">#{version}#{
-                      patch_record = DB[:patches][:pkg_attr => pkg, :version => version]
-                      patch_record ? "(<a href=/patch?p=#{pkg}&v=#{version}>p</a>)" : ""
-                    }</span>" }.
-                join(', ')
-            }</td><td>#{v.
-                select { |version, updaters| is_major_update?(nixpkg, version) }.
-                map { |version, updaters| "<span title=\"#{updaters.join(', ')}\">#{version}#{
-                      patch_record = DB[:patches][:pkg_attr => pkg, :version => version]
-                      patch_record ? "(<a href=/patch?p=#{pkg}&v=#{version}>p</a>)" : ""
-                    }</span>" }.
-                join(', ')
+            <td>#{
+                render_versions(pkg, v.select { |version, updaters| not is_major_update?(nixpkg, version) })
+            }</td><td>#{
+                render_versions(pkg, v.select { |version, updaters| is_major_update?(nixpkg, version) })
             }</td>
         }
       end.
@@ -327,9 +330,11 @@ get '/pd' do
     
     <p>Available updates:
     <table>
-    <th><tr><td>Version</td><td>Reported by</td><td>Tarball</td><td>Patch</td>
+    <th><tr><td>Version</td><td>Reported by</td><td>Tarball</td><td>Patch</td><td>Log</td>
     #{
       outdated[params[:p]].map do |version, updaters|
+        patch = DB[:patches][:pkg_attr => pkg.internal_name, :version => version]
+        build = (patch ? DB[:builds][:outpath => patch[:outpath]] : nil)
         %{<tr>
           <td>#{version}</td>
           <td>#{updaters.join ", "}</td>
@@ -337,7 +342,8 @@ get '/pd' do
             tarball = DB[:tarballs].join(:tarball_sha256,:tarball => :tarball)[:pkg_attr => pkg.internal_name, :version => version]
             tarball and tarball[:sha256] != '404' ? tarball [:tarball] : ""
           }</td>
-          <td>#{DB[:patches][:pkg_attr => pkg.internal_name, :version => version] ? "<a href=/patch?p=#{pkg.internal_name}&v=#{version}>yes</a>" : ""}</td>
+          <td>#{ patch ? "<a href=/patch?p=#{pkg.internal_name}&v=#{version}>yes</a>" : "" }</td>
+          <td>#{ build ? "<a href=/buildlog?outpath=#{build[:outpath]}>#{build[:status]}</a>" : "" }</td>
           </tr>
         }
       end.
@@ -347,6 +353,13 @@ get '/pd' do
   }
 end
 
+get '/buildlog' do
+  halt 404, "derivation not specified" unless 
+  build = DB[:builds][:outpath => params[:outpath]]
+  halt 404, "package not found" unless build
+  content_type 'text/plain', :charset => 'utf-8'
+  build[:log]
+end
 
 get '/refresh' do
   refresh
