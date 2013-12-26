@@ -354,6 +354,7 @@ if actions.include? :patches
     new_pkg = DistroPackage::Nix.load_package(row[:pkg_attr])
     #puts new_pkg.inspect
     if new_pkg and new_pkg.url == row[:tarball] and new_pkg.sha256 == row[:sha256] and new_pkg.version == row[:version]
+      new_pkg.instantiate
       DB[:patches] << {
           :pkg_attr => row[:pkg_attr],
           :version => row[:version],

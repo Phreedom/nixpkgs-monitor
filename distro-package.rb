@@ -348,6 +348,10 @@ module DistroPackage
       return super.merge({ :homepage => @homepage, :sha256 => @sha256, :position => @position })
     end
 
+    def instantiate
+      d_path = %x(nix-instantiate -A '#{internal_name}' ./nixpkgs/).strip
+      raise "Failed to instantiate #{internal_name} #{drvpath}: [#{d_path}]" unless $? == 0 and d_path == drvpath
+    end
 
     def self.deserialize(val)
       pkg = super(val)
