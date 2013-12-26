@@ -291,14 +291,18 @@ if actions.include? :tarballs
         puts "tarball #{tarball} not found"
         sha256 = "404"
       end
-      if 1 != DB[:tarball_sha256].where(:tarball => tarball).update(:sha256 => sha256)
-        DB[:tarball_sha256] << { :tarball => tarball, :sha256 => sha256 }
+      DB.transaction do
+        if 1 != DB[:tarball_sha256].where(:tarball => tarball).update(:sha256 => sha256)
+          DB[:tarball_sha256] << { :tarball => tarball, :sha256 => sha256 }
+        end
       end
     end
   end
 
 end
 if actions.include? :patches
+
+  DB.transaction do
 
   # this is the biggest and ugliest collection of hacks
   DB.create_table!(:patches) do
@@ -365,6 +369,8 @@ if actions.include? :patches
     #exit
   end
 
+  end
+  
 end
 if actions.include? :build
 
@@ -391,8 +397,10 @@ if actions.include? :build
           log_path = "/nix/var/log/nix/drvs/#{log_path[0,2]}/#{log_path[2,100]}.bz2"
           log = %x(bzcat #{log_path})
 
-          if 1 != DB[:builds].where(:outpath => outpath).update(:status => status, :log => log.encode("us-ascii", :invalid=>:replace, :undef => :replace))
-            DB[:builds] << { :outpath => outpath, :status => status, :log => log.encode("us-ascii", :invalid=>:replace, :undef => :replace) }
+          DB.transaction do
+            if 1 != DB[:builds].where(:outpath => outpath).update(:status => status, :log => log.encode("us-ascii", :invalid=>:replace, :undef => :replace))
+              DB[:builds] << { :outpath => outpath, :status => status, :log => log.encode("us-ascii", :invalid=>:replace, :undef => :replace) }
+            end
           end
         else
           puts "failed to run patch"
