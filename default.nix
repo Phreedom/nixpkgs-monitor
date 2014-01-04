@@ -1,3 +1,4 @@
+{nix_src ? null}:
 let
 
   pkgs = import <nixpkgs> {
@@ -8,7 +9,8 @@ let
 
   required_gems = with pkgs.rubyLibs; [ mechanize sequel sqlite3 sinatra haml ];
   nix_fresh = pkgs.lib.overrideDerivation pkgs.nix (a: {
-      src = pkgs.fetchurl {
+      src = if nix_src != null then nix_src else
+      pkgs.fetchurl {
         url = http://hydra.nixos.org/build/6861519/download/5/nix-1.7pre3292_709cbe4.tar.xz;
         sha256 = "1pajn8yrrh3dfkyp4xq1y30hrd6n8dbskd1dq13g4rpqn2kg1440";
       };
