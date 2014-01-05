@@ -389,10 +389,8 @@ if actions.include? :build
         puts %x(git checkout master --force)
         IO.popen('patch -p1', "r+") { |f| f.write row[:patch]; f.close_write; Process.wait(f.pid) }
         if $?.to_i == 0
-          puts "trying to build"
-          puts "nix-build -A #{row[:pkg_attr]} 2>&1"
-          puts %x(pwd)
-          puts %x(nix-build -A #{row[:pkg_attr]} 2>&1)
+          puts "building #{row[:drvpath]}: nix-build -A #{row[:pkg_attr]} 2>&1"
+          %x(nix-build -A #{row[:pkg_attr]} 2>&1)
           status = ($? == 0 ? "ok" : "failed")
           log_path = row[:drvpath].sub(%r{^/nix/store/}, "")
           log_path = "/nix/var/log/nix/drvs/#{log_path[0,2]}/#{log_path[2,100]}.bz2"
