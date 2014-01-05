@@ -45,7 +45,7 @@ dependencies such as doxygen, missing perl dependencies and failed tests.
 
 # Suggested Workflow
 
-Before committing a patch,tTake a look at its build log to check for irregularities,
+Before committing a patch, take a look at its build log to check for irregularities,
 even if it compiles and is a minor update.
 
-A patch can be applied by curl 'patch url'|git am
+A patch can be applied using curl 'patch url'|git am
