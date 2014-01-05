@@ -385,7 +385,7 @@ get '/pd' do
                 tarball and tarball[:sha256] != '404' ? tarball [:tarball] : ""
               }</td>
               <td>#{ patch ? "<a href=/patch?p=#{pkg.internal_name}&v=#{version}>yes</a>" : "" }</td>
-              <td>#{ build ? "<a href=/buildlog?outpath=#{build[:outpath]}>#{build[:status]}</a>" : "" }</td>
+              <td>#{ build ? "<a href=/buildlog?outpath=#{CGI::escape(build[:outpath])}>#{build[:status]}</a>" : "" }</td>
               </tr>
             }
           end.
