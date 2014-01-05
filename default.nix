@@ -51,11 +51,13 @@ stdenv.mkDerivation {
     cp nixpkgs-monitor-site $out/bin
 
     wrapProgram "$out/bin/updatetool.rb" \
+          --prefix PATH : "${ruby19}/bin:${git}/bin:${patch}/bin:${curl}/bin:${bzip2}/bin:${gnutar}/bin/:${gnugrep}/bin/:${coreutils}/bin:$out/bin:${gnused}/bin/" \
           --prefix GEM_PATH : "$GEM_PATH" \
           --prefix RUBYLIB : "${rubygems}/lib:$gemlibpath" \
           --set RUBYOPT rubygems
 
     wrapProgram "$out/bin/nixpkgs-monitor-site" \
+          --set PATH "${ruby19}/bin" \
           --prefix GEM_PATH : "$GEM_PATH" \
           --prefix RUBYLIB : "${rubygems}/lib:$gemlibpath" \
           --set RUBYOPT rubygems
