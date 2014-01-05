@@ -15,6 +15,9 @@ let
       doInstallCheck = false;
       patches = [ ./expose-attrs.patch ];
     });
+
+  updater_runtime_deps = with pkgs; [ ruby19 git patch curl bzip2 gnutar gnugrep coreutils gnused bash ];
+
 in
 with pkgs;
 stdenv.mkDerivation {
@@ -51,7 +54,8 @@ stdenv.mkDerivation {
     cp nixpkgs-monitor-site $out/bin
 
     wrapProgram "$out/bin/updatetool.rb" \
-          --prefix PATH : "${ruby19}/bin:${git}/bin:${patch}/bin:${curl}/bin:${bzip2}/bin:${gnutar}/bin/:${gnugrep}/bin/:${coreutils}/bin:$out/bin:${gnused}/bin/" \
+          ${stdenv.lib.concatMapStrings (x: "--prefix PATH : ${x}/bin ") updater_runtime_deps} \
+          --prefix PATH : $out/bin \
           --prefix GEM_PATH : "$GEM_PATH" \
           --prefix RUBYLIB : "${rubygems}/lib:$gemlibpath" \
           --set RUBYOPT rubygems
