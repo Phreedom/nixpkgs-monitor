@@ -12,6 +12,11 @@ require 'set'
 
 include PackageUpdater
 
+
+STDOUT.sync = true;
+STDERR.sync = true;
+
+
 log = Logger.new(STDOUT)
 log.level = Logger::WARN
 log.formatter = proc { |severity, datetime, progname, msg|
