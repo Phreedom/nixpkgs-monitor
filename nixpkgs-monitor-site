@@ -504,6 +504,8 @@ __END__
 .header
   .name NixPkgs Monitor
   .links
+    %a(href="http://github.com/phreedom/nixpkgs-monitor/blob/master/help.md") info
+    |
     %a(href="http://github.com/phreedom/nixpkgs-monitor") source
 
 .dashitem#coverage
