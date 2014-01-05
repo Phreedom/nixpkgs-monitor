@@ -470,7 +470,7 @@ if actions.include? :cve_check
       product_to_cve[fullname] << entry.id
     end
   end
-  puts "products #{products.count}: #{products.keys.join("\n")}"
+  log.debug "products #{products.count}: #{products.keys.join("\n")}"
 
   products.each_pair do |product, versions|
     versions.each do |version|
@@ -484,7 +484,7 @@ if actions.include? :cve_check
       tokens[token] = ( tokens[token] ? (tokens[token] + 1) : 1 )
     end
   end
-  log.info "token counts \n #{sorted_hash_to_s(tokens)} \n\n"
+  log.debug "token counts \n #{sorted_hash_to_s(tokens)} \n\n"
 
   selectivity = {}
   tokens.keys.each do |token|
@@ -492,11 +492,11 @@ if actions.include? :cve_check
       pkg.internal_name.include? token or pkg.name.include? token
     end
   end
-  log.info "token selectivity \n #{sorted_hash_to_s(selectivity)} \n\n"
+  log.debug "token selectivity \n #{sorted_hash_to_s(selectivity)} \n\n"
 
   false_positive_impact = {}
   tokens.keys.each{ |t| false_positive_impact[t] = tokens[t] * selectivity[t] }
-  log.info "false positive impact \n #{sorted_hash_to_s(false_positive_impact)} \n\n"
+  log.debug "false positive impact \n #{sorted_hash_to_s(false_positive_impact)} \n\n"
 
   product_blacklist = Set.new [ '.net_framework', 'iphone_os', 'nx-os',
     'unified_computing_system_infrastructure_and_unified_computing_system_software',
