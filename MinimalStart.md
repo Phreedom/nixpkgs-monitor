@@ -1,6 +1,3 @@
-You need to add the /bin/ directory of build result to $PATH, it is
-currently not enough to run updatetool.rb by specifying full path.
-
 updatetool.rb --list-nix initializes the database. It has to be done
 first.
 
