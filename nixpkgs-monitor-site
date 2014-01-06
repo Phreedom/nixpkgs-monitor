@@ -112,7 +112,9 @@ helpers do
       #vulnerable
       (not filter[:vulnerable] or vulnerable.has_key?(pkg)) and
       # has maintainer
-      (not filter[:m] or filter[:m] == "" or (nixpkg.maintainers.index{ |m| m.downcase.include? filter[:m].downcase }))
+      (not filter[:m] or filter[:m] == "" or (nixpkg.maintainers.index{ |m| m.downcase.include? filter[:m].downcase })) and
+      # has a patch
+      (not filter[:haspatch] or (outdated.has_key?(pkg) and outdated[pkg].keys.find{|v| DB[:patches][:pkg_attr => pkg, :version => v] } ) )
       # to be continued
     })
   end
@@ -177,7 +179,8 @@ helpers do
           </select>
         </div>
         <div class=filteritem style="text-align: left">
-          <input type=checkbox name=vulnerable #{ render_checked(params[:vulnerable]) }>Vulnerable<br>
+          <input type=checkbox name=vulnerable #{ render_checked(params[:vulnerable]) }>Vulnerable
+          <input type=checkbox name=haspatch #{ render_checked(params[:haspatch]) }>With patch<br>
           <input type=checkbox name=outdated #{ render_checked(params[:outdated]) }>Outdated
           <input type=checkbox name=outdated_minor #{ render_checked(params[:outdated_minor]) }>Minor
           <input type=checkbox name=outdated_major #{ render_checked(params[:outdated_major]) }>Major
