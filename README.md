@@ -32,6 +32,7 @@ Fetch CVE data: --cve-update
 
 After package cache is populated, generate all essential reports:
 --coverage --check-updates --cve-check
+Nix package cache should be populated before this step; the rest is optional, but strongly recommended
 
 Fetch tarballs and generate patches: --tarballs --patches
 
@@ -62,6 +63,9 @@ Tarball candidates are in tarballs table.
 Tarball hashes or '404' if download failed are in tarball_sha256 table.
 
 Generated patches along with derivation paths are in patches table.
+
+You can extract individual patches by running something like 
+SELECT patch FROM patches WHERE pkg_attr='package' AND version='version';
 
 Build logs and statuses are in builds table.
 
