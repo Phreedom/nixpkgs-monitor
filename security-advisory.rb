@@ -35,6 +35,7 @@ module SecurityAdvisory
     def self.fetch_updates
       puts %x(curl -O http://static.nvd.nist.gov/feeds/xml/cve/nvdcve-2.0-2012.xml -z nvdcve-2.0-2012.xml)
       puts %x(curl -O http://static.nvd.nist.gov/feeds/xml/cve/nvdcve-2.0-2013.xml -z nvdcve-2.0-2013.xml)
+      puts %x(curl -O http://static.nvd.nist.gov/feeds/xml/cve/nvdcve-2.0-2014.xml -z nvdcve-2.0-2014.xml)
       puts %x(curl -O http://static.nvd.nist.gov/feeds/xml/cve/nvdcve-2.0-modified.xml -z nvdcve-2.0-modified.xml)
     end
 
@@ -43,6 +44,7 @@ module SecurityAdvisory
       unless @list
         @list = load_from('nvdcve-2.0-2012.xml') +
                 load_from('nvdcve-2.0-2013.xml') +
+                load_from('nvdcve-2.0-2014.xml') +
                 load_from('nvdcve-2.0-modified.xml')
       end
       @list
