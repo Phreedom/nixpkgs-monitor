@@ -86,6 +86,8 @@ in
         NIX_REMOTE = "daemon";
         NIX_CONF_DIR = "/etc/nix";
         OPENSSL_X509_CERT_FILE = "/etc/ssl/certs/ca-bundle.crt";
+        GIT_SSL_CAINFO = "/etc/ssl/certs/ca-bundle.crt";
+        CURL_CA_BUNDLE = "/etc/ssl/certs/ca-bundle.crt";
       };
 
       script = ''
