@@ -397,11 +397,11 @@ if actions.include? :build
         status = ($? == 0 ? "ok" : "failed")
         log_path = row[:drvpath].sub(%r{^/nix/store/}, "")
         log_path = "/nix/var/log/nix/drvs/#{log_path[0,2]}/#{log_path[2,100]}.bz2"
-        log = %x(bzcat #{log_path})
+        log = %x(bzcat #{log_path}).encode("us-ascii", :invalid=>:replace, :undef => :replace)
 
         DB.transaction do
-          if 1 != DB[:builds].where(:outpath => outpath).update(:status => status, :log => log.encode("us-ascii", :invalid=>:replace, :undef => :replace))
-            DB[:builds] << { :outpath => outpath, :status => status, :log => log.encode("us-ascii", :invalid=>:replace, :undef => :replace) }
+          if 1 != DB[:builds].where(:outpath => outpath).update(:status => status, :log => log)
+            DB[:builds] << { :outpath => outpath, :status => status, :log => log }
           end
         end
 
