@@ -390,26 +390,23 @@ if actions.include? :build
     outpath = row[:outpath]
     build = DB[:builds][:outpath => outpath]
     if not(build) or (build[:status] != "ok" and builds_ignore_negative)
-      Dir.chdir(DistroPackage::Nix.repository_path) do
-        puts %x(git checkout master --force)
-        IO.popen('patch -p1', "r+") { |f| f.write row[:patch]; f.close_write; Process.wait(f.pid) }
-        if $?.to_i == 0
-          puts "building #{row[:drvpath]}: nix-build -A #{row[:pkg_attr]} 2>&1"
-          %x(nix-build -A #{row[:pkg_attr]} 2>&1)
-          status = ($? == 0 ? "ok" : "failed")
-          log_path = row[:drvpath].sub(%r{^/nix/store/}, "")
-          log_path = "/nix/var/log/nix/drvs/#{log_path[0,2]}/#{log_path[2,100]}.bz2"
-          log = %x(bzcat #{log_path})
+      if File.exist? row[:drvpath]
 
-          DB.transaction do
-            if 1 != DB[:builds].where(:outpath => outpath).update(:status => status, :log => log.encode("us-ascii", :invalid=>:replace, :undef => :replace))
-              DB[:builds] << { :outpath => outpath, :status => status, :log => log.encode("us-ascii", :invalid=>:replace, :undef => :replace) }
-            end
+        puts "building: nix-store --realise #{row[:drvpath]} 2>&1"
+        %x(nix-store --realise #{row[:drvpath]} 2>&1)
+        status = ($? == 0 ? "ok" : "failed")
+        log_path = row[:drvpath].sub(%r{^/nix/store/}, "")
+        log_path = "/nix/var/log/nix/drvs/#{log_path[0,2]}/#{log_path[2,100]}.bz2"
+        log = %x(bzcat #{log_path})
+
+        DB.transaction do
+          if 1 != DB[:builds].where(:outpath => outpath).update(:status => status, :log => log.encode("us-ascii", :invalid=>:replace, :undef => :replace))
+            DB[:builds] << { :outpath => outpath, :status => status, :log => log.encode("us-ascii", :invalid=>:replace, :undef => :replace) }
           end
-        else
-          puts "failed to run patch"
         end
-        puts %x(git checkout master --force)
+
+      else
+        puts "derivation #{row[:drvpath]} seems to have been garbage-collected"
       end
     end
   end
