@@ -88,6 +88,7 @@ in
         OPENSSL_X509_CERT_FILE = "/etc/ssl/certs/ca-bundle.crt";
         GIT_SSL_CAINFO = "/etc/ssl/certs/ca-bundle.crt";
         CURL_CA_BUNDLE = "/etc/ssl/certs/ca-bundle.crt";
+        NIX_PATH = "/nix/var/nix/profiles/per-user/root/channels/nixos"; # to be able to prefetch mirror:// urls
       };
 
       script = ''
