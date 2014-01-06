@@ -9,8 +9,8 @@ let
   required_gems = with pkgs.rubyLibs; [ mechanize sequel sqlite3 sinatra haml ];
   nix_fresh = pkgs.lib.overrideDerivation pkgs.nix (a: {
       src = pkgs.fetchurl {
-        url = http://hydra.nixos.org/build/6861519/download/5/nix-1.7pre3292_709cbe4.tar.xz;
-        sha256 = "1pajn8yrrh3dfkyp4xq1y30hrd6n8dbskd1dq13g4rpqn2kg1440";
+        url = http://hydra.nixos.org/build/7526615/download/5/nix-1.7pre3306_5ba5993.tar.xz;
+        sha256 = "21f0809915f387e4c9e811ed56dab5dc8f8156e26574014a027b94ba8ea5a34e";
       };
       doInstallCheck = false;
       patches = [ ./expose-attrs.patch ];
