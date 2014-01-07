@@ -6,7 +6,7 @@ let
 
   cfg = config.services.nixpkgs-monitor;
 
-  npmon = import ./default.nix;
+  npmon = import ./default.nix {};
 
 in
 
