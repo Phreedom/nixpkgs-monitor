@@ -28,7 +28,6 @@ Log = log
 csv_report_file = nil
 actions = Set.new
 pkg_names_to_check = []
-tarballs_ignore_negative = false
 builds_ignore_negative = false
 
 db_path = './db.sqlite'
@@ -88,7 +87,7 @@ OptionParser.new do |o|
     actions << :tarballs
   end
 
-  o.on("--redownload", "Drop cached tarball download failure records") do
+  o.on("--redownload", "Try downloading missing tarballs again on the next --tarballs run") do
     actions << :drop_negative_tarball_cache
   end
 
@@ -100,8 +99,8 @@ OptionParser.new do |o|
     actions << :build
   end
 
-  o.on("--rebuild", "Try building patches marked as failed again") do
-    builds_ignore_negative = true
+  o.on("--rebuild", "Try building patches marked as failed again on the next --build run") do
+    actions << :drop_negative_build_cache
   end
 
   o.on("--find-unmatched-advisories", "Find security advisories which don't map to a Nix package(don't touch yet)") do
@@ -381,7 +380,12 @@ if actions.include? :patches
   end
 
   end
+
+end
+if actions.include? :drop_negative_build_cache
   
+  DB[:builds].where(:status => "failed").delete
+
 end
 if actions.include? :build
 
@@ -394,7 +398,7 @@ if actions.include? :build
   DB[:patches].distinct.all.each do |row|
     outpath = row[:outpath]
     build = DB[:builds][:outpath => outpath]
-    if not(build) or (build[:status] != "ok" and builds_ignore_negative)
+    unless build
       if File.exist? row[:drvpath]
 
         puts "building: nix-store --realise #{row[:drvpath]} 2>&1"

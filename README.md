@@ -68,7 +68,9 @@ Generated patches along with derivation paths are in patches table.
 You can extract individual patches by running something like 
 SELECT patch FROM patches WHERE pkg_attr='package' AND version='version';
 
-Build logs and statuses are in builds table.
+Build logs and statuses are in builds table. Failed build records can be
+dropped using updatetool.rb --rebuild if you suspect intermittent build
+failures caused by eg disk being full or network going down.
 
 Potential CVE matches are in cve_match table.
 
