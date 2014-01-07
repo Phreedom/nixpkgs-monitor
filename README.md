@@ -61,6 +61,7 @@ Package caches are in packages_* tables.
 Tarball candidates are in tarballs table.
 
 Tarball hashes or '404' if download failed are in tarball_sha256 table.
+404 records can be dropped using updatetool.rb --redownload.
 
 Generated patches along with derivation paths are in patches table.
 

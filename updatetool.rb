@@ -88,8 +88,8 @@ OptionParser.new do |o|
     actions << :tarballs
   end
 
-  o.on("--recheck", "Try downloading tarballs marked as not available again") do
-    tarballs_ignore_negative = true
+  o.on("--redownload", "Drop cached tarball download failure records") do
+    actions << :drop_negative_tarball_cache
   end
 
   o.on("--patches", "Generate patches for packages updates") do
@@ -278,6 +278,11 @@ if actions.include? :check_updates
   File.write(csv_report_file, csv_string) if csv_report_file
 
 end
+if actions.include? :drop_negative_tarball_cache
+
+  DB[:tarball_sha256].where(:sha256 => "404").delete
+
+end
 if actions.include? :tarballs
 
   DB.create_table?(:tarball_sha256) do
@@ -288,7 +293,7 @@ if actions.include? :tarballs
   DB[:tarballs].distinct.all.each do |row|
     tarball = row[:tarball]
     hash = DB[:tarball_sha256][:tarball => tarball]
-    if not(hash) or (hash[:sha256] == "404" and tarballs_ignore_negative)
+    unless hash
       sha256 = %x(nix-prefetch-url #{tarball}).strip
       if $? == 0 and sha256 != ""
         puts "found #{sha256} hash"
