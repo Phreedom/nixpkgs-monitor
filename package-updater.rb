@@ -347,7 +347,7 @@ module PackageUpdater
       def self.tarballs
         unless @tarballs
           @tarballs = {}
-          z = Zlib::GzipReader.new(StringIO.new(http_agent.get("http://cpan.perl.org/indices/ls-lR.gz").body))
+          z = Zlib::GzipReader.new(StringIO.new(http_agent.get("http://www.cpan.org/indices/ls-lR.gz").body))
           unzipped = z.read
           dirs = unzipped.split("\n\n")
           dirs.each do |dir|
