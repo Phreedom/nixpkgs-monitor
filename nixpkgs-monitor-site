@@ -46,9 +46,7 @@ helpers do
       @outdated = Hash.new{|h,k| h[k] = Hash.new{|h,k| h[k] = Array.new } }
       PackageUpdater::Updaters.each do |updater|
         DB[updater.friendly_name].all.each do |row|
-          outdated[row[:pkg_attr]][row[:version_major]] << updater.friendly_name.to_s if row[:version_major]
-          outdated[row[:pkg_attr]][row[:version_minor]] << updater.friendly_name.to_s if row[:version_minor]
-          outdated[row[:pkg_attr]][row[:version_fix]] << updater.friendly_name.to_s if row[:version_fix]
+          outdated[row[:pkg_attr]][row[:version]] << updater.friendly_name.to_s
         end
       end
     end

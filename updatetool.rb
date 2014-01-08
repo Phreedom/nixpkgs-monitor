@@ -185,31 +185,22 @@ if actions.include? :check_updates
     DB.transaction do
 
       DB.create_table!(updater.friendly_name) do
-        String :pkg_attr, :unique => true, :primary_key => true
-        String :version_major
-        String :version_minor
-        String :version_fix
-        String :tarball_major
-        String :tarball_minor
-        String :tarball_fix
+        String :pkg_attr
+        String :version
+        primary_key [ :pkg_attr, :version ]
       end
 
       pkgs_to_check.each do |pkg|
         new_ver = updater.newest_versions_of pkg
         if new_ver
           puts "#{pkg.internal_name}/#{pkg.name}:#{pkg.version} " +
-               "has new version #{new_ver} according to #{updater.friendly_name}"
-          DB[updater.friendly_name] << {
-            :pkg_attr => pkg.internal_name,
-            :version_major => new_ver[0],
-            :tarball_major => updater.find_tarball(pkg, new_ver[0]),
-
-            :version_minor => new_ver[1],
-            :tarball_minor => updater.find_tarball(pkg, new_ver[1]),
-
-            :version_fix   => new_ver[2],
-            :tarball_fix   => updater.find_tarball(pkg, new_ver[2]),
-          }
+               "has new version(s) #{new_ver} according to #{updater.friendly_name}"
+          new_ver.reject(&:nil?).each do |version|
+            DB[updater.friendly_name] << {
+              :pkg_attr => pkg.internal_name,
+              :version => version,
+            }
+          end
         end
       end
 
@@ -227,33 +218,13 @@ if actions.include? :check_updates
       DB[updater.friendly_name].all.each do |row|
         pkg = DistroPackage::Nix.by_internal_name[row[:pkg_attr]]
 
-        if row[:version_major]
-          tarball = updater.find_tarball(pkg, row[:version_major])
+        tarball = updater.find_tarball(pkg, row[:version])
 
-          DB[:tarballs] << {
-            :pkg_attr => row[:pkg_attr],
-            :version => row[:version_major],
-            :tarball => tarball
-          } if tarball
-        end
-        if row[:version_minor]
-          tarball = updater.find_tarball(pkg, row[:version_minor])
-
-          DB[:tarballs] << {
-            :pkg_attr => row[:pkg_attr],
-            :version => row[:version_minor],
-            :tarball => tarball
-          } if tarball
-        end
-        if row[:version_fix]
-          tarball = updater.find_tarball(pkg, row[:version_fix])
-
-          DB[:tarballs] << {
-            :pkg_attr => row[:pkg_attr],
-            :version => row[:version_fix],
-            :tarball => tarball
-          } if tarball
-        end
+        DB[:tarballs] << {
+          :pkg_attr => row[:pkg_attr],
+          :version => row[:version],
+          :tarball => tarball
+        } if tarball
       end
     end
   end
@@ -268,7 +239,7 @@ if actions.include? :check_updates
 
       updaters.each do |updater|
         record = DB[updater.friendly_name][:pkg_attr => pkg.internal_name]
-        report_line << ( record ? (record[:version_major] ? record[:version_major] : (record[:version_minor] ? record[:version_minor] : record[:version_fix]) ) : nil )
+        report_line << ( record ? record[:version] : nil )
       end
 
       csv << report_line
