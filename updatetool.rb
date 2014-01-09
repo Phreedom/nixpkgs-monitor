@@ -153,7 +153,7 @@ if actions.include? :coverage
 
   coverage = {}
   DistroPackage::Nix.packages.each do |pkg|
-    coverage[pkg] = Updaters.map{ |updater| (updater.covers?(pkg) ? 1 : 0) }.reduce(0, :+)
+    coverage[pkg] = Updaters.map{ |updater| (updater.covers?(pkg) ? 1 : 0) }.reduce(:+)
   end
 
   DB.transaction do
@@ -234,7 +234,7 @@ if actions.include? :check_updates
 
     pkgs_to_check.each do |pkg|
       report_line = [ pkg.internal_name, pkg.name, pkg.version ]
-      report_line << updaters.map{ |updater| (updater.covers?(pkg) ? 1 : 0) }.reduce(0, :+)
+      report_line << updaters.map{ |updater| (updater.covers?(pkg) ? 1 : 0) }.reduce(:+)
 
       updaters.each do |updater|
         record = DB[updater.friendly_name][:pkg_attr => pkg.internal_name]
