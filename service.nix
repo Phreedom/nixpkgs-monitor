@@ -52,6 +52,13 @@ in
         '';
       };
 
+      builderCount = mkOption {
+        default = 1;
+        description = ''
+          The number of builds  to run in parallel
+        '';
+      };
+
     };
 
   };
@@ -94,7 +101,7 @@ in
       script = ''
         ${npmon}/bin/updatetool.rb --all
         ${pkgs.curl}/bin/curl ${cfg.host}:${toString cfg.port}/refresh
-        ${npmon}/bin/updatetool.rb --build
+        ${npmon}/bin/updatetool.rb --build --builder-count ${toString cfg.builderCount}
       '';
 
       serviceConfig = {

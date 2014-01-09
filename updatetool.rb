@@ -29,6 +29,7 @@ csv_report_file = nil
 actions = Set.new
 pkg_names_to_check = []
 builds_ignore_negative = false
+builder_count = 1
 
 db_path = './db.sqlite'
 DB = Sequel.sqlite(db_path)
@@ -101,6 +102,11 @@ OptionParser.new do |o|
 
   o.on("--rebuild", "Try building patches marked as failed again on the next --build run") do
     actions << :drop_negative_build_cache
+  end
+
+  o.on("--builder-count NUMBER", Integer, "Number of packages to build in parallel") do |bc|
+    builder_count = bc
+    abort "builder count must be in 1..100 range" unless (1..100).include? bc
   end
 
   o.on("--find-unmatched-advisories", "Find security advisories which don't map to a Nix package(don't touch yet)") do
@@ -366,30 +372,43 @@ if actions.include? :build
     String :log
   end
 
+  queue = Queue.new
+
   DB[:patches].distinct.all.each do |row|
     outpath = row[:outpath]
     build = DB[:builds][:outpath => outpath]
-    unless build
-      if File.exist? row[:drvpath]
-
-        puts "building: nix-store --realise #{row[:drvpath]} 2>&1"
-        %x(nix-store --realise #{row[:drvpath]} 2>&1)
-        status = ($? == 0 ? "ok" : "failed")
-        log_path = row[:drvpath].sub(%r{^/nix/store/}, "")
-        log_path = "/nix/var/log/nix/drvs/#{log_path[0,2]}/#{log_path[2,100]}.bz2"
-        log = %x(bzcat #{log_path}).encode("us-ascii", :invalid=>:replace, :undef => :replace)
-
-        DB.transaction do
-          if 1 != DB[:builds].where(:outpath => outpath).update(:status => status, :log => log)
-            DB[:builds] << { :outpath => outpath, :status => status, :log => log }
-          end
-        end
-
-      else
-        puts "derivation #{row[:drvpath]} seems to have been garbage-collected"
-      end
-    end
+    queue << row unless build
   end
+  builder_count.times{ queue << nil } # add end of queue "job" x builder count
+
+  (1..builder_count).map do |n|
+    Thread.new(n) do |builder_id|
+
+      while (row = queue.pop)
+        if File.exist? row[:drvpath]
+
+          log.warn "Builder #{builder_id} building: #{row[:drvpath]}"
+          %x(nix-store --realise #{row[:drvpath]} 2>&1)
+          status = ($? == 0 ? "ok" : "failed")
+          log_path = row[:drvpath].sub(%r{^/nix/store/}, "")
+          log_path = "/nix/var/log/nix/drvs/#{log_path[0,2]}/#{log_path[2,100]}.bz2"
+          build_log = %x(bzcat #{log_path}).encode("us-ascii", :invalid=>:replace, :undef => :replace)
+          log.warn "Builder #{builder_id} finished building: #{row[:drvpath]}"
+
+          DB.transaction do
+            if 1 != DB[:builds].where(:outpath => row[:outpath]).update(:status => status, :log => build_log)
+              DB[:builds] << { :outpath => row[:outpath], :status => status, :log => build_log }
+            end
+          end
+
+        else
+          puts "derivation #{row[:drvpath]} seems to have been garbage-collected"
+        end
+      end
+
+    end
+  end.
+  each(&:join) # wait for threads to finish
 
 end
 if actions.include? :check_pkg_version_match
