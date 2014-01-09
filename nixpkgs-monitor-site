@@ -233,6 +233,14 @@ get '/' do
       <tr><td>Outdated</td><td><a href=/outdated>#{outdated.count}</a></td></tr>
   }
 
+  patches = DB[:patches].left_join(:builds, :outpath => :outpath)
+  patch_report = %{
+      <tr><td>Built</td><td>#{patches.where(:status => "ok").count}</td></tr>
+      <tr><td>Failed</td><td>#{patches.where(:status => "failed").count}</td></tr>
+      <tr><td>Queued</td><td>#{patches.where(:status => nil).count}</td></tr>
+      <tr><td>Total</td><td><a href=/outdated?haspatch=on>#{DB[:patches].count}</a></td></tr>
+  }
+
   permaintainer_report = maintainers.
       map{ |maintainer| %{
           <tr>
@@ -249,6 +257,7 @@ get '/' do
     :coverage_report => coverage_report,
     :maintainer_report => maintainer_report,
     :needsattention_report => needsattention_report,
+    :patch_report => patch_report,
     :permaintainer_report => permaintainer_report
   }
 end
@@ -528,6 +537,11 @@ __END__
 .dashitem#needsattention
   %table
     = needsattention_report
+
+.dashitem#patches
+  %span.header Patches
+  %table
+    = patch_report
 
 .dashitem#permaintainer
   %span.header Per Maintainer
