@@ -281,6 +281,8 @@ if actions.include? :tarballs
 end
 if actions.include? :patches
 
+  puts %x(cd #{DistroPackage::Nix.repository_path} && git checkout master --force)
+
   DB.transaction do
 
   # this is the biggest and ugliest collection of hacks
@@ -312,7 +314,7 @@ if actions.include? :patches
         next
       end
     end
-    patched = original_content.map{|s| s.dup} # deep copy
+    patched = original_content.map(&:dup) # deep copy
     patched[sha256_location].sub!(nixpkg.sha256, row[:sha256])
     patched[sha256_location].sub!(/md5\s*=/, "sha256 =")
     patched[sha256_location].sub!(/sha1\s*=/, "sha256 =")
@@ -321,39 +323,49 @@ if actions.include? :patches
     patched[src_url_location].sub!(nixpkg.url, row[:tarball]) if src_url_location
 
     # a stupid heuristic targetting name = "..."; version = "..."; and such
-    version_location = patched.index{ |l| l =~ /[nv].*=.*".*".*;/ and l.include? nixpkg.version }
-    unless version_location
+    version_locations = patched.map.
+        with_index{ |l, i| (l =~ /[nv].*=.*".*".*;/ and l.include? nixpkg.version) ? i : nil }.
+        reject(&:nil?)
+
+    unless version_locations.size>0
       puts "failed to find the original version value to replace for #{row[:pkg_attr]}"
       next
     end
-    patched[version_location].sub!(nixpkg.version, row[:version])
 
-    File.write(file_name, patched.join)
-    patch = %x(cd #{DistroPackage::Nix.repository_path} && git diff)
-    new_pkg = DistroPackage::Nix.load_package(row[:pkg_attr])
-    #puts new_pkg.inspect
-    if new_pkg and new_pkg.url == row[:tarball] and new_pkg.sha256 == row[:sha256] and new_pkg.version == row[:version]
-      new_pkg.instantiate
-      DB[:patches] << {
-          :pkg_attr => row[:pkg_attr],
-          :version => row[:version],
-          :tarball => row[:tarball],
-          :patch => patch,
-          :drvpath => new_pkg.drvpath,
-          :outpath => new_pkg.outpath
-      }
-    else
-      puts "patch failed to change version, url or hash for #{row[:pkg_attr]}"
+    patch_index = version_locations.index do |version_location|
+      patched_v = patched.map(&:dup) # deep copy
+      patched_v[version_location].sub!(nixpkg.version, row[:version])
+
+      File.write(file_name, patched_v.join)
+      patch = %x(cd #{DistroPackage::Nix.repository_path} && git diff)
+      new_pkg = DistroPackage::Nix.load_package(row[:pkg_attr])
+
+      success = (new_pkg and new_pkg.url == row[:tarball] and
+                 new_pkg.sha256 == row[:sha256] and new_pkg.version == row[:version])
+      if success
+        new_pkg.instantiate
+        DB[:patches] << {
+            :pkg_attr => row[:pkg_attr],
+            :version => row[:version],
+            :tarball => row[:tarball],
+            :patch => patch,
+            :drvpath => new_pkg.drvpath,
+            :outpath => new_pkg.outpath
+        }
+      end
+      success
     end
+
+    puts "patch failed to change version, url or hash for #{row[:pkg_attr]}" unless patch_index
+
     File.write(file_name, original_content.join)
-    #exit
   end
 
   end
 
 end
 if actions.include? :drop_negative_build_cache
-  
+
   DB[:builds].where(:status => "failed").delete
 
 end
