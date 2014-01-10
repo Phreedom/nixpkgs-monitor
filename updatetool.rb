@@ -3,7 +3,6 @@
 require 'optparse'
 require 'mechanize'
 require 'logger'
-require 'csv'
 require 'distro-package.rb'
 require 'package-updater.rb'
 require 'security-advisory'
@@ -25,7 +24,6 @@ log.formatter = proc { |severity, datetime, progname, msg|
 
 Log = log
 
-csv_report_file = nil
 actions = Set.new
 pkg_names_to_check = []
 builds_ignore_negative = false
@@ -61,10 +59,6 @@ OptionParser.new do |o|
 
   o.on("--list-gentoo", "List Gentoo packages") do
     distros_to_update << DistroPackage::Gentoo
-  end
-
-  o.on("--output-csv FILE", "Write report in CSV format to FILE") do |f|
-    csv_report_file = f
   end
 
   o.on("--check-pkg-version-match", "List Nix packages for which either tarball can't be parsed or its version doesn't match the package version") do
@@ -162,15 +156,10 @@ if actions.include? :coverage
       Integer :coverage
     end
 
-    csv_string = CSV.generate do |csv|
-      csv << ['Attr', 'Name','Version', 'Coverage']
-      coverage.each do |pkg, cvalue|
-        csv << [ pkg.internal_name, pkg.name, pkg.version, cvalue ]
-        DB[:estimated_coverage] << { :pkg_attr => pkg.internal_name, :coverage => cvalue }
-      end
+    coverage.each do |pkg, cvalue|
+      DB[:estimated_coverage] << { :pkg_attr => pkg.internal_name, :coverage => cvalue }
     end
   end
-  File.write(csv_report_file, csv_string) if csv_report_file
 
 end
 if actions.include? :check_updates
@@ -227,24 +216,6 @@ if actions.include? :check_updates
       end
     end
   end
-
-  # generate CSV report
-  csv_string = CSV.generate do |csv|
-    csv << ([ 'Attr', 'Name','Version', 'Coverage' ] + updaters.map(&:name))
-
-    pkgs_to_check.each do |pkg|
-      report_line = [ pkg.internal_name, pkg.name, pkg.version ]
-      report_line << updaters.map{ |updater| (updater.covers?(pkg) ? 1 : 0) }.reduce(:+)
-
-      updaters.each do |updater|
-        record = DB[updater.friendly_name][:pkg_attr => pkg.internal_name]
-        report_line << ( record ? record[:version] : nil )
-      end
-
-      csv << report_line
-    end
-  end
-  File.write(csv_report_file, csv_string) if csv_report_file
 
 end
 if actions.include? :drop_negative_tarball_cache
