@@ -82,7 +82,11 @@ helpers do
     maintainers
   end
 
+
   def filter_packages(filter)
+
+    have_patches = ( filter[:haspatch] ? Set.new( DB[:patches].select(:pkg_attr).distinct.map(:pkg_attr) ) : nil )
+
     Set.new( DistroPackage::Nix.by_internal_name.select { |pkg, nixpkg|
       # maintainer count
       (not filter[:mc] or filter[:mc] == "" or filter[:mc].to_i == nixpkg.maintainers.count) and
@@ -91,7 +95,7 @@ helpers do
       #vulnerable
       (not filter[:vulnerable] or vulnerable.has_key?(pkg)) and
       # has a patch
-      (not filter[:haspatch] or (outdated.has_key?(pkg) and DB[:patches][:pkg_attr => pkg] ) ) and
+      (not filter[:haspatch] or have_patches.include?(pkg) ) and
       # outdated which has a minor update
       (not filter[:outdated_minor] or (outdated.has_key?(pkg) and outdated[pkg].keys.find{|v| not is_major_update?(nixpkg, v)}) ) and
       # outdated which has a major update
