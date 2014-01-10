@@ -14,44 +14,32 @@ cache = {}
 helpers do
 
   def maintainers
-    unless @maintainers
-      @maintainers = DB[:nix_maintainers].select(:maintainer).distinct.map(:maintainer).map{ |m| m.gsub(/<.*>/,"").strip }
-    end
-    @maintainers
+    @maintainers ||= DB[:nix_maintainers].select(:maintainer).distinct.map(:maintainer).
+        map{ |m| m.gsub(/<.*>/,"").strip }
   end
 
   def coverage
-    unless @coverage
-      @coverage = DB[:estimated_coverage].all.each_with_object({}){ |c, coverage| coverage[c[:pkg_attr]] = c[:coverage] }
-    end
-    @coverage
+    @coverage ||= DB[:estimated_coverage].all.
+        each_with_object({}){ |c, coverage| coverage[c[:pkg_attr]] = c[:coverage] }
   end
 
   def coverage_stats
-    unless @coverage_stats
-      @coverage_stats = coverage.values.each_with_object(Hash.new(0)){ |c, cstat| cstat[c] += 1 }
-    end
-    @coverage_stats
+    @coverage_stats ||= coverage.values.
+        each_with_object(Hash.new(0)){ |c, cstat| cstat[c] += 1 }
   end
 
   def maintainer_stats
-    unless @maintainer_stats
-      @maintainer_stats = DistroPackage::Nix.packages.
+    @maintainer_stats ||= DistroPackage::Nix.packages.
         each_with_object(Hash.new(0)){ |pkg, mstat| mstat[pkg.maintainers.count] += 1 }
-    end
-    @maintainer_stats
   end
 
   def outdated
-    unless @outdated
-      @outdated = Hash.new{|h,k| h[k] = Hash.new{|h,k| h[k] = Array.new } }
-      PackageUpdater::Updaters.each do |updater|
-        DB[updater.friendly_name].all.each do |row|
-          @outdated[row[:pkg_attr]][row[:version]] << updater.friendly_name.to_s
+    @outdated ||= PackageUpdater::Updaters.each.
+        with_object(Hash.new{|h,k| h[k] = Hash.new{|h,k| h[k] = Array.new } }) do |updater, data|
+          DB[updater.friendly_name].all.each do |row|
+            data[row[:pkg_attr]][row[:version]] << updater.friendly_name.to_s
+          end
         end
-      end
-    end
-    @outdated
   end
   
   def is_major_update?(pkg, new_ver)
