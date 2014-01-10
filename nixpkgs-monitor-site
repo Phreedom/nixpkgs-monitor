@@ -100,18 +100,18 @@ helpers do
       (not filter[:mc] or filter[:mc] == "" or filter[:mc].to_i == nixpkg.maintainers.count) and
       # coverage
       (not filter[:c] or filter[:c] == "" or filter[:c].to_i == coverage[pkg]) and
-      #outdated
-      (not filter[:outdated] or outdated.has_key?(pkg)) and
+      #vulnerable
+      (not filter[:vulnerable] or vulnerable.has_key?(pkg)) and
+      # has a patch
+      (not filter[:haspatch] or (outdated.has_key?(pkg) and DB[:patches][:pkg_attr => pkg] ) ) and
       # outdated which has a minor update
       (not filter[:outdated_minor] or (outdated.has_key?(pkg) and outdated[pkg].keys.find{|v| not is_major_update?(nixpkg, v)}) ) and
       # outdated which has a major update
       (not filter[:outdated_major] or (outdated.has_key?(pkg) and outdated[pkg].keys.find{|v| is_major_update?(nixpkg, v)}) ) and
-      #vulnerable
-      (not filter[:vulnerable] or vulnerable.has_key?(pkg)) and
+      #outdated
+      (not filter[:outdated] or outdated.has_key?(pkg)) and
       # has maintainer
-      (not filter[:m] or filter[:m] == "" or (nixpkg.maintainers.index{ |m| m.downcase.include? filter[:m].downcase })) and
-      # has a patch
-      (not filter[:haspatch] or (outdated.has_key?(pkg) and outdated[pkg].keys.find{|v| DB[:patches][:pkg_attr => pkg, :version => v] } ) )
+      (not filter[:m] or filter[:m] == "" or (nixpkg.maintainers.index{ |m| m.downcase.include? filter[:m].downcase }))
       # to be continued
     }.keys )
   end
