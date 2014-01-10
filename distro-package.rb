@@ -7,12 +7,12 @@ module DistroPackage
     attr_accessor :internal_name, :name, :version, :url, :revision
 
 
-    def initialize(internal_name, name = internal_name, version = '0', url = "", revision = "" )
+    def initialize(internal_name, name = internal_name, version = '0', url = nil, revision = nil )
       @internal_name = internal_name
       @name = name.downcase
       @version = version
       @url = url
-      @revision = ( revision ? revision : "" )
+      @revision = revision
     end
 
 
@@ -508,7 +508,7 @@ module DistroPackage
         pkg_name = $1 if pkgmeta =~ /Package:\s*(.*)/
         pkg_version = $1 if pkgmeta =~ /Version:\s*(.*)/
         if pkg_name and pkg_version
-          package = Debian.new(pkg_name, pkg_name, pkg_version, 'none')
+          package = Debian.new(pkg_name, pkg_name, pkg_version)
           deb_list[package.name] = package if package
         end
       end
