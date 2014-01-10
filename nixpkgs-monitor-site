@@ -47,7 +47,7 @@ helpers do
       @outdated = Hash.new{|h,k| h[k] = Hash.new{|h,k| h[k] = Array.new } }
       PackageUpdater::Updaters.each do |updater|
         DB[updater.friendly_name].all.each do |row|
-          outdated[row[:pkg_attr]][row[:version]] << updater.friendly_name.to_s
+          @outdated[row[:pkg_attr]][row[:version]] << updater.friendly_name.to_s
         end
       end
     end
@@ -95,10 +95,7 @@ helpers do
   end
 
   def filter_packages(filter)
-    Set.new( DistroPackage::Nix.by_internal_name.keys.select { |pkg|
-      nixpkg = DistroPackage::Nix.by_internal_name[pkg]
-
-      nixpkg and
+    Set.new( DistroPackage::Nix.by_internal_name.select { |pkg, nixpkg|
       # maintainer count
       (not filter[:mc] or filter[:mc] == "" or filter[:mc].to_i == nixpkg.maintainers.count) and
       # coverage
@@ -116,7 +113,7 @@ helpers do
       # has a patch
       (not filter[:haspatch] or (outdated.has_key?(pkg) and outdated[pkg].keys.find{|v| DB[:patches][:pkg_attr => pkg, :version => v] } ) )
       # to be continued
-    })
+    }.keys )
   end
 
 
