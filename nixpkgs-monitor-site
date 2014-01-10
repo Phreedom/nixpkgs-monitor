@@ -321,7 +321,9 @@ get '/vulnerable' do
       map do |pkg, candidates|
         candidates.map{ |prod, cves| %{
             <tr><td><a href="/pd?p=#{pkg}" class=pkglink data-target=#{pkg}>#{pkg}:#{DistroPackage::Nix.by_internal_name[pkg].version}</a></td>
-            <td>#{prod}</td><td>#{cves.to_a.map{|cve| render_cve(cve)}.join(', ') }</td></tr>
+            <td>#{prod}</td>
+            <td>#{cves.to_a[0..(cves.size>3 ? 1 : 2)].map{|cve| render_cve(cve)}.join(', ')}
+                #{cves.size>3 ? "... #{cves.size} total" : ""}</td></tr>
             <tr><td colspan=3 id=#{pkg}></td>
         } }.
         join
