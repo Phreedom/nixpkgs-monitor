@@ -538,6 +538,7 @@ if actions.include? :cve_check
       if version =~ /^\d+\.\d+\.\d+\.\d+/ or version =~ /^\d+\.\d+\.\d+/ or version =~ /^\d+\.\d+/ or version =~ /^\d+/ 
         v = $&
         pkgs.each do |pkg|
+          next if product == 'ack' and pkg.name != 'ack' and pkg.internal_name.start_with?( 'perlPackages.', 'python', 'emacs')
           next if product == 'perl' and pkg.internal_name.start_with? 'perlPackages.'
           next if product == 'python' and (pkg.internal_name =~ /^python\d\dPackages\./ or pkg.internal_name.start_with? 'pythonDocs.')
           if pkg.version =~ /^\d+\.\d+\.\d+\.\d+/ or pkg.version =~ /^\d+\.\d+\.\d+/ or pkg.version =~ /^\d+\.\d+/ or pkg.version =~ /^\d+/ 
