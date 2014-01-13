@@ -512,6 +512,19 @@ __END__
 
 .container
   .container
+    .dashitem#patches
+      %table.table.table-striped.table-condensed
+        %tr
+          %th Patches
+          %th #
+
+        = patch_report
+
+    .dashitem#needsattention
+      %table.table.table-striped.table-condensed
+        = needsattention_report
+
+  .container
     .dashitem#coverage
       %table.table.table-striped.table-condensed
         %tr
@@ -525,19 +538,6 @@ __END__
           %th Maintainers
           %th Packages
         = maintainer_report
-
-    .dashitem#needsattention
-      %table.table.table-striped.table-condensed
-        = needsattention_report
-
-  .container
-    .dashitem#patches
-      %table.table.table-striped.table-condensed
-        %tr
-          %th Patches
-          %th #
-
-        = patch_report
 
   .container
     .dashitem#permaintainer
