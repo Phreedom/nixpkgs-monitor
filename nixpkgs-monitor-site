@@ -14,7 +14,7 @@ cache = {}
 helpers do
 
   def maintainers
-    @maintainers ||= DB[:nix_maintainers].select(:maintainer).distinct.map(:maintainer).
+    @maintainers ||= DB[:nix_maintainers].select(:maintainer).distinct.order(:maintainer).map(:maintainer).
         map{ |m| m.gsub(/<.*>/,"").strip }
   end
 
@@ -186,13 +186,15 @@ helpers do
     versions.map do |version, updaters|
       patch_record = DB[:patches][:pkg_attr => pkg, :version => version]
       build_record = (patch_record ? DB[:builds][:outpath => patch_record[:outpath]] : nil)
-      patch_status = build_record ? (build_record[:status] == "ok" ? "P" : "f" ) : "p" 
+      patch_label = build_record ? (build_record[:status] == "ok" ? "label-success" : "label-danger" ) : "label-primary"
 
-      "<span title=\"#{updaters.join(', ')}\">#{version}#{
-                      patch_record ? "(<a href=/patch?p=#{pkg}&v=#{version}>#{patch_status}</a>)" : ""
-                    }</span>"
+      if patch_record
+        "<span title=\"#{updaters.join(', ')}\"><a href=/patch?p=#{pkg}&v=#{version} class=\"label #{patch_label}\">#{version}</a></span>"
+      else
+        "<span title=\"#{updaters.join(', ')}\" class=\"label label-default\">#{version}</span>"
+      end
     end.
-    join(', ')
+    join(' ')
   end
 
   def render_cve(cve)
@@ -289,7 +291,7 @@ get '/outdated' do
             }</td><td>#{
                 render_versions(pkg, v.select { |version, updaters| is_major_update?(nixpkg, version) })
             }</td>
-            <tr><td colspan=4 id=#{pkg}></td>
+            <tr><td colspan=4 id=#{pkg}></td></tr>
         }
       end.
       join
@@ -340,7 +342,9 @@ get '/pd' do
   halt "package not found" unless pkg
   %{
     <link rel="stylesheet" href="/default.css" type="text/css" />
-    <table>
+    <link rel="stylesheet" href="http://netdna.bootstrapcdn.com/bootstrap/3.0.3/css/bootstrap.min.css" type="text/css" />
+    <h4>Information:</h4>
+    <table class="table table-striped table-condensed">
       <tr><td>Package:</td><td>#{pkg.internal_name}</td>
       <tr><td>Name:</td><td>#{pkg.name}</td>
       <tr><td>Version:</td><td>#{pkg.version}</td>
@@ -373,20 +377,19 @@ get '/pd' do
 
     #{ outdated.has_key?(pkg.internal_name) ?
       %{
-        <p>Available updates:
-        <table>
-        <th><tr><td>Version</td><td>Reported by</td><td>Tarball</td><td>Patch</td><td>Log</td>
+        <h4>Available updates:</h4>
+        <table class="table table-striped table-condensed">
+        <tr><th>Version</th><th>Reported by</th><th>Tarball</th><th>Patch</th><th>Log</th>
         #{
           outdated[params[:p]].map do |version, updaters|
             patch = DB[:patches][:pkg_attr => pkg.internal_name, :version => version]
             build = (patch ? DB[:builds][:outpath => patch[:outpath]] : nil)
+            tarball = DB[:tarballs].join(:tarball_sha256,:tarball => :tarball)[:pkg_attr => pkg.internal_name, :version => version]
+            url = (tarball and tarball[:sha256] != '404') ? tarball [:tarball] : ""
             %{<tr>
               <td>#{version}</td>
               <td>#{updaters.join ", "}</td>
-              <td>#{
-                tarball = DB[:tarballs].join(:tarball_sha256,:tarball => :tarball)[:pkg_attr => pkg.internal_name, :version => version]
-                tarball and tarball[:sha256] != '404' ? tarball [:tarball] : ""
-              }</td>
+              <td><a href="#{url}">#{url}</a></td>
               <td>#{ patch ? "<a href=/patch?p=#{pkg.internal_name}&v=#{version}>yes</a>" : "" }</td>
               <td>#{ build ? "<a href=/buildlog?outpath=#{CGI::escape(build[:outpath])}>#{build[:status]}</a>" : "" }</td>
               </tr>
@@ -434,36 +437,20 @@ end
 get '/default.css' do
   content_type 'text/css', :charset => 'utf-8'
 <<STYLE
-body {
-    background-color: #707070;
-    margin: 0 10% 0 10%;
-    font-family: "Nimbus Sans L", sans-serif;
-}
-div.header { overflow:hidden }
-div.header div.name { font-weight: bold; float:left }
-div.header div.links { float: right }
 div.dashitem, div.header {
     margin: 0.5em;
     background-color: white;
 
-    /* Put a rounded border around the page. */
     border: 1px solid black;
     padding: 1em;
-    border-radius: 1em;
-    border-radius: 1em;
-    box-shadow: #404040 0px 5px 50px;
 }
 div.dashitem { float: left; }
 div.dashitem th {
     border-bottom: dotted 1px;
 }
+div.links { float: right }
 div.filteritem { float: left; text-align: right; padding: 0 1em }
 span.vuln { color:red }
-a { text-decoration: none; }
-a:hover { text-decoration: underline; }
-a:link { color: #0048b3; }
-a:visited { color: #002a6a; }
-a.no-hover:hover { background: none; }
 STYLE
 end
 
@@ -503,84 +490,137 @@ __END__
 @@dashboard
 
 <link rel="stylesheet" href="/default.css" type="text/css" />
+<link rel="stylesheet" href="http://hydra.nixos.org/static/bootstrap/css/bootstrap.min.css" type="text/css" />
+<link rel="stylesheet" href="http://hydra.nixos.org/static/css/hydra.css" type="text/css" />
+<link rel="stylesheet" href="http://hydra.nixos.org/static/bootstrap/css/bootstrap-responsive.min.css" type="text/css" />
 
-.header
-  .name NixPkgs Monitor
-  .links
-    %a(href="http://github.com/phreedom/nixpkgs-monitor/blob/master/help.md") info
-    |
-    %a(href="http://github.com/phreedom/nixpkgs-monitor") source
+.navbar.navbar-fixed-top
+  .navbar-inner
+    .container
+      %a.brand(href="http://monitor.nixos.org") 
+        <img src="http://hydra.nixos.org/logo", alt="Nix logo" class="logo"/> Nixpkgs monitor
 
-.dashitem#coverage
-  %span.header Coverage
-  %table
-    %tr
-      %th Coverage
-      %th Packages
-    = coverage_report
+      .nav-collapse.collapse
+        %ul.nav.pull-right
+          %li
+            %a(href="http://github.com/phreedom/nixpkgs-monitor/blob/master/help.md") info
+          %li
+            %a(href="http://github.com/phreedom/nixpkgs-monitor") source
 
-.dashitem#maintainers
-  %span.header Maintainers
-  %table
-    %tr
-      %th Maintainers
-      %th Packages
-    = maintainer_report
+.skip-topbar
 
-.dashitem#needsattention
-  %table
-    = needsattention_report
+.container
+  .container
+    .dashitem#coverage
+      %span.header Coverage
+      %table.table.table-striped.table-condensed
+        %tr
+          %th Coverage
+          %th Packages
+        = coverage_report
 
-.dashitem#patches
-  %span.header Patches
-  %table
-    = patch_report
+    .dashitem#maintainers
+      %span.header Maintainers
+      %table.table.table-striped.table-condensed
+        %tr
+          %th Maintainers
+          %th Packages
+        = maintainer_report
 
-.dashitem#permaintainer
-  %span.header Per Maintainer
-  %table
-    %tr
-      %th Maintainer
-      %th Packages
-      %th Outdated
-      %th Not covered
-      %th Vulnerable
-    = permaintainer_report
+    .dashitem#needsattention
+      %table.table.table-striped.table-condensed
+        = needsattention_report
+
+    .dashitem#patches
+      %span.header Patches
+      %table
+        = patch_report
+
+  .container
+    .dashitem#permaintainer
+      %span.header Per Maintainer
+      %table.table.table-striped.table-condensed
+        %tr
+          %th Maintainer
+          %th Packages
+          %th Outdated
+          %th Not covered
+          %th Vulnerable
+        = permaintainer_report
 
 
 @@coverage
 
 <link rel="stylesheet" href="/default.css" type="text/css" />
+<link rel="stylesheet" href="http://hydra.nixos.org/static/bootstrap/css/bootstrap.min.css" type="text/css" />
+<link rel="stylesheet" href="http://hydra.nixos.org/static/css/hydra.css" type="text/css" />
+<link rel="stylesheet" href="http://hydra.nixos.org/static/bootstrap/css/bootstrap-responsive.min.css" type="text/css" />
 
-.dashitem
-  = filter
+.navbar.navbar-fixed-top
+  .navbar-inner
+    .container
+      %a.brand(href="http://monitor.nixos.org") 
+        <img src="http://hydra.nixos.org/logo", alt="Nix logo" class="logo"/> Nixpkgs monitor
 
-.dashitem
-  %table
-    %tr
-      %th Attr Path
-      %th Estimated Coverage
-      %th Maintainers
-    = coverage_report
+      .nav-collapse.collapse
+        %ul.nav.pull-right
+          %li
+            %a(href="http://github.com/phreedom/nixpkgs-monitor/blob/master/help.md") info
+          %li
+            %a(href="http://github.com/phreedom/nixpkgs-monitor") source
 
-<script type="text/javascript" src="/packagedetails.js"></script>
+.skip-topbar
+
+.container
+  .dashitem
+    = filter
+
+  .dashitem
+    %table.table.table-striped.table-condensed
+      %tr
+        %th Attr Path
+        %th Estimated Coverage
+        %th Maintainers
+      = coverage_report
+
+  <script type="text/javascript" src="/packagedetails.js"></script>
 
 
 @@outdated
 
 <link rel="stylesheet" href="/default.css" type="text/css" />
+<link rel="stylesheet" href="http://hydra.nixos.org/static/bootstrap/css/bootstrap.min.css" type="text/css" />
+<link rel="stylesheet" href="http://hydra.nixos.org/static/css/hydra.css" type="text/css" />
+<link rel="stylesheet" href="http://hydra.nixos.org/static/bootstrap/css/bootstrap-responsive.min.css" type="text/css" />
 
-.dashitem
-  = filter
+.navbar.navbar-fixed-top
+  .navbar-inner
+    .container
+      %a.brand(href="http://monitor.nixos.org") 
+        <img src="http://hydra.nixos.org/logo", alt="Nix logo" class="logo"/> Nixpkgs monitor
 
-.dashitem
-  %table
-    %tr
-      %th Attr Path
-      %th Current
-      %th Minor Update(s)
-      %th Major Update(s)
-    = outdated_report
+      .nav-collapse.collapse
+        %ul.nav.pull-right
+          %li
+            %a(href="http://github.com/phreedom/nixpkgs-monitor/blob/master/help.md") info
+          %li
+            %a(href="http://github.com/phreedom/nixpkgs-monitor") source
+
+.skip-topbar
+
+.container
+  .dashitem
+    = filter
+
+.container
+  .dashitem
+    %table.table.table-striped.table-condensed
+      %tr
+        %th Attr Path
+        %th Current
+        %th Minor Update(s)
+        %th Major Update(s)
+      = outdated_report
 
 <script type="text/javascript" src="/packagedetails.js"></script>
 
@@ -588,16 +628,36 @@ __END__
 @@vulnerable
 
 <link rel="stylesheet" href="/default.css" type="text/css" />
+<link rel="stylesheet" href="http://hydra.nixos.org/static/bootstrap/css/bootstrap.min.css" type="text/css" />
+<link rel="stylesheet" href="http://hydra.nixos.org/static/css/hydra.css" type="text/css" />
+<link rel="stylesheet" href="http://hydra.nixos.org/static/bootstrap/css/bootstrap-responsive.min.css" type="text/css" />
 
-.dashitem
-  = filter
+.navbar.navbar-fixed-top
+  .navbar-inner
+    .container
+      %a.brand(href="http://monitor.nixos.org") 
+        <img src="http://hydra.nixos.org/logo", alt="Nix logo" class="logo"/> Nixpkgs monitor
 
-.dashitem
-  %table
-    %tr
-      %th Attr Path/Version
-      %th CVE Product
-      %th CVE ID(s)
-    = vulnerable_report
+      .nav-collapse.collapse
+        %ul.nav.pull-right
+          %li
+            %a(href="http://github.com/phreedom/nixpkgs-monitor/blob/master/help.md") info
+          %li
+            %a(href="http://github.com/phreedom/nixpkgs-monitor") source
+
+.skip-topbar
+
+.container
+
+  .dashitem
+    = filter
+
+  .dashitem
+    %table.table.table-striped.table-condensed
+      %tr
+        %th Attr Path/Version
+        %th CVE Product
+        %th CVE ID(s)
+      = vulnerable_report
 
 <script type="text/javascript" src="/packagedetails.js"></script>
