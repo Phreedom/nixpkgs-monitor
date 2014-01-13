@@ -216,6 +216,7 @@ get '/' do
       join
 
   cache[:needsattention_report] ||= %{
+      <tr><th>Packages</th><th>#</th></tr>
       <tr><td>Potentially vulnerable</td><td><a href=/vulnerable>#{vulnerable.count}</a></td></tr>
       <tr><td>Unmaintained not covered</td><td><a href=/coverage?mc=0&c=0>#{
         filter_packages({:c => 0, :mc => 0}).count
@@ -512,7 +513,6 @@ __END__
 .container
   .container
     .dashitem#coverage
-      %span.header Coverage
       %table.table.table-striped.table-condensed
         %tr
           %th Coverage
@@ -520,7 +520,6 @@ __END__
         = coverage_report
 
     .dashitem#maintainers
-      %span.header Maintainers
       %table.table.table-striped.table-condensed
         %tr
           %th Maintainers
@@ -531,14 +530,17 @@ __END__
       %table.table.table-striped.table-condensed
         = needsattention_report
 
+  .container
     .dashitem#patches
-      %span.header Patches
-      %table
+      %table.table.table-striped.table-condensed
+        %tr
+          %th Patches
+          %th #
+
         = patch_report
 
   .container
     .dashitem#permaintainer
-      %span.header Per Maintainer
       %table.table.table-striped.table-condensed
         %tr
           %th Maintainer
