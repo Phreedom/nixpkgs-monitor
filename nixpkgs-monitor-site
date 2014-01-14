@@ -245,7 +245,7 @@ get '/' do
       } }.
       join
 
-  haml :dashboard, :locals => {
+  haml :dashboard, :layout => :layout, :locals => {
     :coverage_report => cache[:coverage_report],
     :maintainer_report => cache[:maintainer_report],
     :needsattention_report => cache[:needsattention_report],
@@ -267,7 +267,8 @@ get '/coverage' do
       } }.
       join
 
-  haml :coverage, :locals => { :coverage_report => report, :filter => render_filter(params) }
+  haml :coverage, :layout => :layout,
+       :locals => { :coverage_report => report, :filter => render_filter(params) }
 end
 
 
@@ -297,7 +298,8 @@ get '/outdated' do
       end.
       join
 
-    haml :outdated, :locals => { :outdated_report => report, :filter => render_filter(params.merge({:outdated => true})) }
+    haml :outdated, :layout => :layout,
+         :locals => { :outdated_report => report, :filter => render_filter(params.merge({:outdated => true})) }
 end
 
 
@@ -333,7 +335,8 @@ get '/vulnerable' do
       end.
       join
 
-  haml :vulnerable, :locals => { :vulnerable_report => report, :filter => render_filter(params.merge({:vulnerable => true})) }
+  haml :vulnerable, :layout => :layout,
+       :locals => { :vulnerable_report => report, :filter => render_filter(params.merge({:vulnerable => true})) }
 end
 
 
@@ -497,12 +500,12 @@ end
 
 __END__
 
-@@dashboard
+@@layout
 
-<link rel="stylesheet" href="/default.css" type="text/css" />
 <link rel="stylesheet" href="http://hydra.nixos.org/static/bootstrap/css/bootstrap.min.css" type="text/css" />
 <link rel="stylesheet" href="http://hydra.nixos.org/static/css/hydra.css" type="text/css" />
 <link rel="stylesheet" href="http://hydra.nixos.org/static/bootstrap/css/bootstrap-responsive.min.css" type="text/css" />
+<link rel="stylesheet" href="/default.css" type="text/css" />
 
 .navbar.navbar-fixed-top
   .navbar-inner
@@ -520,157 +523,93 @@ __END__
 .skip-topbar
 
 .container
-  .container
-    .dashitem#patches
-      %table.table.table-striped.table-condensed
-        %tr
-          %th Patches
-          %th #
-        = patch_report
+  = yield
 
-    .dashitem#needsattention
-      %table.table.table-striped.table-condensed
-        %tr
-          %th Packages
-          %th #
-        = needsattention_report
+<script type="text/javascript" src="/packagedetails.js"></script>
 
-  .container
-    .dashitem#coverage
-      %table.table.table-striped.table-condensed
-        %tr
-          %th Coverage
-          %th Packages
-        = coverage_report
 
-    .dashitem#maintainers
-      %table.table.table-striped.table-condensed
-        %tr
-          %th Maintainers
-          %th Packages
-        = maintainer_report
+@@dashboard
 
-  .container
-    .dashitem#permaintainer
-      %table.table.table-striped.table-condensed
-        %tr
-          %th Maintainer
-          %th Packages
-          %th Outdated
-          %th Not covered
-          %th Vulnerable
-        = permaintainer_report
+.container
+  .dashitem#patches
+    %table.table.table-striped.table-condensed
+      %tr
+        %th Patches
+        %th #
+      = patch_report
+
+  .dashitem#needsattention
+    %table.table.table-striped.table-condensed
+      %tr
+        %th Packages
+        %th #
+      = needsattention_report
+
+.container
+  .dashitem#coverage
+    %table.table.table-striped.table-condensed
+      %tr
+        %th Coverage
+        %th Packages
+      = coverage_report
+
+  .dashitem#maintainers
+    %table.table.table-striped.table-condensed
+      %tr
+        %th Maintainers
+        %th Packages
+      = maintainer_report
+
+.container
+  .dashitem#permaintainer
+    %table.table.table-striped.table-condensed
+      %tr
+        %th Maintainer
+        %th Packages
+        %th Outdated
+        %th Not covered
+        %th Vulnerable
+      = permaintainer_report
 
 
 @@coverage
 
-<link rel="stylesheet" href="/default.css" type="text/css" />
-<link rel="stylesheet" href="http://hydra.nixos.org/static/bootstrap/css/bootstrap.min.css" type="text/css" />
-<link rel="stylesheet" href="http://hydra.nixos.org/static/css/hydra.css" type="text/css" />
-<link rel="stylesheet" href="http://hydra.nixos.org/static/bootstrap/css/bootstrap-responsive.min.css" type="text/css" />
+.dashitem
+  = filter
 
-.navbar.navbar-fixed-top
-  .navbar-inner
-    .container
-      %a.brand(href="http://monitor.nixos.org") 
-        <img src="http://hydra.nixos.org/logo", alt="Nix logo" class="logo"/> Nixpkgs monitor
-
-      .nav-collapse.collapse
-        %ul.nav.pull-right
-          %li
-            %a(href="http://github.com/phreedom/nixpkgs-monitor/blob/master/help.md") info
-          %li
-            %a(href="http://github.com/phreedom/nixpkgs-monitor") source
-
-.skip-topbar
-
-.container
-  .dashitem
-    = filter
-
-  .dashitem
-    %table.table.table-striped.table-condensed
-      %tr
-        %th Attr Path
-        %th Estimated Coverage
-        %th Maintainers
-      = coverage_report
-
-  <script type="text/javascript" src="/packagedetails.js"></script>
+.dashitem
+  %table.table.table-striped.table-condensed
+    %tr
+      %th Attr Path
+      %th Estimated Coverage
+      %th Maintainers
+    = coverage_report
 
 
 @@outdated
 
-<link rel="stylesheet" href="http://hydra.nixos.org/static/bootstrap/css/bootstrap.min.css" type="text/css" />
-<link rel="stylesheet" href="http://hydra.nixos.org/static/css/hydra.css" type="text/css" />
-<link rel="stylesheet" href="http://hydra.nixos.org/static/bootstrap/css/bootstrap-responsive.min.css" type="text/css" />
-<link rel="stylesheet" href="/default.css" type="text/css" />
+.dashitem
+  = filter
 
-.navbar.navbar-fixed-top
-  .navbar-inner
-    .container
-      %a.brand(href="http://monitor.nixos.org") 
-        <img src="http://hydra.nixos.org/logo", alt="Nix logo" class="logo"/> Nixpkgs monitor
-
-      .nav-collapse.collapse
-        %ul.nav.pull-right
-          %li
-            %a(href="http://github.com/phreedom/nixpkgs-monitor/blob/master/help.md") info
-          %li
-            %a(href="http://github.com/phreedom/nixpkgs-monitor") source
-
-.skip-topbar
-
-.container
-  .dashitem
-    = filter
-
-.container
-  .dashitem
-    %table.table.table-striped.table-condensed
-      %tr
-        %th Attr Path
-        %th Current
-        %th Minor Update(s)
-        %th Major Update(s)
-      = outdated_report
-
-<script type="text/javascript" src="/packagedetails.js"></script>
+.dashitem
+  %table.table.table-striped.table-condensed
+    %tr
+      %th Attr Path
+      %th Current
+      %th Minor Update(s)
+      %th Major Update(s)
+    = outdated_report
 
 
 @@vulnerable
 
-<link rel="stylesheet" href="/default.css" type="text/css" />
-<link rel="stylesheet" href="http://hydra.nixos.org/static/bootstrap/css/bootstrap.min.css" type="text/css" />
-<link rel="stylesheet" href="http://hydra.nixos.org/static/css/hydra.css" type="text/css" />
-<link rel="stylesheet" href="http://hydra.nixos.org/static/bootstrap/css/bootstrap-responsive.min.css" type="text/css" />
+.dashitem
+  = filter
 
-.navbar.navbar-fixed-top
-  .navbar-inner
-    .container
-      %a.brand(href="http://monitor.nixos.org") 
-        <img src="http://hydra.nixos.org/logo", alt="Nix logo" class="logo"/> Nixpkgs monitor
-
-      .nav-collapse.collapse
-        %ul.nav.pull-right
-          %li
-            %a(href="http://github.com/phreedom/nixpkgs-monitor/blob/master/help.md") info
-          %li
-            %a(href="http://github.com/phreedom/nixpkgs-monitor") source
-
-.skip-topbar
-
-.container
-
-  .dashitem
-    = filter
-
-  .dashitem
-    %table.table.table-striped.table-condensed
-      %tr
-        %th Attr Path/Version
-        %th CVE Product
-        %th CVE ID(s)
-      = vulnerable_report
-
-<script type="text/javascript" src="/packagedetails.js"></script>
+.dashitem
+  %table.table.table-striped.table-condensed
+    %tr
+      %th Attr Path/Version
+      %th CVE Product
+      %th CVE ID(s)
+    = vulnerable_report
