@@ -475,7 +475,10 @@ module DistroPackage
       pkgs_xml.xpath('items/item').each do|entry|
         package = package_from_xml(entry)
         if package
-          nix_list[package.sha256 ? package.sha256 : package.internal_name] = package
+          pkg_hash = package.sha256 ? package.sha256 : package.internal_name
+          nix_list[pkg_hash] = ( nix_list.has_key?(pkg_hash) ?
+                                 (nix_list[pkg_hash].internal_name > package.internal_name ? nix_list[pkg_hash] : package) :
+                                 package )
         else
           puts "failed to parse #{entry}"
         end
