@@ -342,8 +342,8 @@ get '/pd' do
   pkg = DistroPackage::Nix.by_internal_name[params[:p]]
   halt "package not found" unless pkg
   %{
+    <link rel="stylesheet" href="http://hydra.nixos.org/static/bootstrap/css/bootstrap.min.css" type="text/css" />
     <link rel="stylesheet" href="/default.css" type="text/css" />
-    <link rel="stylesheet" href="http://netdna.bootstrapcdn.com/bootstrap/3.0.3/css/bootstrap.min.css" type="text/css" />
     <h4>Information:</h4>
     <table class="table table-striped table-condensed">
       <tr><td>Package:</td><td>#{pkg.internal_name}</td>
@@ -452,6 +452,15 @@ div.dashitem th {
 div.links { float: right }
 div.filteritem { float: left; text-align: right; padding: 0 1em }
 span.vuln { color:red }
+
+.label-primary{background-color:#428bca}
+.label-primary[href]:hover,.label-primary[href]:focus{background-color:#3071a9}
+
+.label-success{background-color:#5cb85c}
+.label-success[href]:hover,.label-success[href]:focus{background-color:#449d44}
+
+.label-danger{background-color:#d9534f}
+.label-danger[href]:hover,.label-danger[href]:focus{background-color:#c9302c}
 STYLE
 end
 
@@ -592,10 +601,10 @@ __END__
 
 @@outdated
 
-<link rel="stylesheet" href="/default.css" type="text/css" />
 <link rel="stylesheet" href="http://hydra.nixos.org/static/bootstrap/css/bootstrap.min.css" type="text/css" />
 <link rel="stylesheet" href="http://hydra.nixos.org/static/css/hydra.css" type="text/css" />
 <link rel="stylesheet" href="http://hydra.nixos.org/static/bootstrap/css/bootstrap-responsive.min.css" type="text/css" />
+<link rel="stylesheet" href="/default.css" type="text/css" />
 
 .navbar.navbar-fixed-top
   .navbar-inner
