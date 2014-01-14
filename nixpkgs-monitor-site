@@ -182,13 +182,12 @@ helpers do
     }
   end
 
-  def render_versions(pkg, versions)
+  def render_versions(pkg, versions, patches)
     versions.map do |version, updaters|
-      patch_record = DB[:patches][:pkg_attr => pkg, :version => version]
-      build_record = (patch_record ? DB[:builds][:outpath => patch_record[:outpath]] : nil)
-      patch_label = build_record ? (build_record[:status] == "ok" ? "label-success" : "label-danger" ) : "label-primary"
+      build_record = patches[ [ pkg, version ] ]
+      patch_label = (build_record and build_record[0]) ? (build_record[0] == "ok" ? "label-success" : "label-danger" ) : "label-primary"
 
-      if patch_record
+      if patches.key? ([ pkg, version ])
         "<span title=\"#{updaters.join(', ')}\"><a href=/patch?p=#{pkg}&v=#{version} class=\"label #{patch_label}\">#{version}</a></span>"
       else
         "<span title=\"#{updaters.join(', ')}\" class=\"label label-default\">#{version}</span>"
@@ -273,6 +272,8 @@ end
 
 
 get '/outdated' do
+  patches = DB[:patches].left_join(:builds, :outpath => :outpath).select_hash_groups([:pkg_attr, :version], :status)
+
   filtered = filter_packages(params)
   report = outdated.
       select{ |pkg, v| filtered.include? pkg }.
@@ -287,9 +288,9 @@ get '/outdated' do
             </td>
             <td>#{nixpkg.version}</td>
             <td>#{
-                render_versions(pkg, v.select { |version, updaters| not is_major_update?(nixpkg, version) })
+                render_versions(pkg, v.select { |version, updaters| not is_major_update?(nixpkg, version) }, patches)
             }</td><td>#{
-                render_versions(pkg, v.select { |version, updaters| is_major_update?(nixpkg, version) })
+                render_versions(pkg, v.select { |version, updaters| is_major_update?(nixpkg, version) }, patches)
             }</td>
             <tr><td colspan=4 id=#{pkg}></td></tr>
         }
