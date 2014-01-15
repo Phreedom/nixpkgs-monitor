@@ -53,11 +53,10 @@ helpers do
 
   def vulnerable
     unless @vulnerable
-      @vulnerable = Hash.new{|h,k| h[k] = Hash.new}
+      @vulnerable = Hash.new{|h,k| h[k] = Hash.new{|h,k| h[k] = Set.new} }
       DB[:cve_match].all.each do |match|
         cve_product = "#{match[:product]}:#{match[:version]}"
         products = @vulnerable[match[:pkg_attr]]
-        products[cve_product] = Set.new unless products[cve_product]
         products[cve_product] << match[:CVE]
       end
     end
