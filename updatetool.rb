@@ -267,7 +267,7 @@ if actions.include? :patches
     String :outpath
   end
 
-  DB[:tarballs].join(:tarball_sha256,:tarball => :tarball).where("sha256 != '404'").distinct.all.each  do |row|
+  DB[:tarballs].join(:tarball_sha256,:tarball => :tarball).exclude(:sha256 => "404").distinct.all.each  do |row|
     nixpkg = DistroPackage::Nix.by_internal_name[row[:pkg_attr]]
     next unless nixpkg
 
