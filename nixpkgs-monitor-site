@@ -457,6 +457,7 @@ div.dashitem { float: left; }
 div.dashitem th {
     border-bottom: dotted 1px;
 }
+div.dashitem table.table { margin-bottom:0 }
 div.links { float: right }
 div.filteritem { float: left; text-align: right; padding: 0 1em }
 span.vuln { color:red }
