@@ -225,11 +225,11 @@ get '/' do
   }
 
   patches = DB[:patches].left_join(:builds, :outpath => :outpath)
-  patch_report = %{
-      <tr><td>Built</td><td>#{patches.where(:status => "ok").count}</td></tr>
-      <tr><td>Failed</td><td>#{patches.where(:status => "failed").count}</td></tr>
-      <tr><td>Queued</td><td>#{patches.where(:status => nil).count}</td></tr>
-      <tr><td>Total</td><td><a href=/outdated?haspatch=on>#{DB[:patches].count}</a></td></tr>
+  patch_stats = {
+    :ok     => patches.where(:status => "ok").count,
+    :failed => patches.exclude(:status => nil, :status => "ok").count,
+    :queued => patches.where(:status => nil).count,
+    :total  => DB[:patches].count,
   }
 
   cache[:permaintainer_report] ||= maintainers.
@@ -248,7 +248,7 @@ get '/' do
     :coverage_report => cache[:coverage_report],
     :maintainer_report => cache[:maintainer_report],
     :needsattention_report => cache[:needsattention_report],
-    :patch_report => patch_report,
+    :patch_stats => patch_stats,
     :permaintainer_report => cache[:permaintainer_report]
   }
 end
@@ -541,7 +541,23 @@ __END__
       %tr
         %th Patches
         %th #
-      = patch_report
+      %tr
+        %td Built
+        %td
+          = patch_stats[:ok]
+      %tr
+        %td Failed
+        %td
+          = patch_stats[:failed]
+      %tr
+        %td Queued
+        %td
+          = patch_stats[:queued]
+      %tr
+        %td Total
+        %td
+          %a(href="/outdated?haspatch=on")
+            = patch_stats[:total]
 
   .dashitem#needsattention
     %table.table.table-striped.table-condensed
