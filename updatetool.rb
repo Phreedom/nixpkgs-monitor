@@ -368,9 +368,15 @@ if actions.include? :build
           log.warn "Builder #{builder_id} building: #{row[:drvpath]}"
           %x(nix-store --realise #{row[:drvpath]} 2>&1)
           status = ($? == 0 ? "ok" : "failed")
+
           log_path = row[:drvpath].sub(%r{^/nix/store/}, "")
           log_path = "/nix/var/log/nix/drvs/#{log_path[0,2]}/#{log_path[2,100]}.bz2"
-          build_log = %x(bzcat #{log_path}).encode("us-ascii", :invalid=>:replace, :undef => :replace)
+          status = "dep failed" if not(File.exist?(log_path)) and status == "failed"
+          build_log = ( status == "dep failed" ?
+                        "" :
+                        %x(bzcat #{log_path}).encode("us-ascii", :invalid=>:replace, :undef => :replace)
+                      )
+
           log.warn "Builder #{builder_id} finished building: #{row[:drvpath]}"
 
           DB.transaction do
