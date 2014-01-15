@@ -287,6 +287,7 @@ if actions.include? :patches
     end
     patched = original_content.map(&:dup) # deep copy
     patched[sha256_location].sub!(nixpkg.sha256, row[:sha256])
+    # upgrade hash to sha256 if necessary
     patched[sha256_location].sub!(/md5\s*=/, "sha256 =")
     patched[sha256_location].sub!(/sha1\s*=/, "sha256 =")
 
@@ -296,7 +297,8 @@ if actions.include? :patches
     # a stupid heuristic targetting name = "..."; version = "..."; and such
     version_locations = patched.map.
         with_index{ |l, i| (l =~ /[nv].*=.*".*".*;/ and l.include? nixpkg.version) ? i : nil }.
-        reject(&:nil?)
+        reject(&:nil?).
+        sort_by{|l| (l-sha256_location).abs }
 
     unless version_locations.size>0
       puts "failed to find the original version value to replace for #{row[:pkg_attr]}"
