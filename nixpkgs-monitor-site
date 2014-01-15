@@ -199,6 +199,14 @@ helpers do
     %{<a href="http://web.nvd.nist.gov/view/vuln/detail?vulnId=#{cve.upcase}" class=cve>#{cve.upcase}</a>}
   end
 
+  def render_pkgname(pkg, options = nil)
+    nixpkg = DistroPackage::Nix.by_internal_name[pkg]
+    %{<a href="/pd?p=#{pkg}" class=pkglink data-target=#{pkg}>#{pkg}#{
+          nixpkg.branch ? "[#{nixpkg.branch}]" : ""
+          }#{
+          options == :with_version ? ":#{nixpkg.version}" : ""
+      }</a>}
+  end
 end
 
 
@@ -260,7 +268,7 @@ get '/coverage' do
       select{ |pkg, c| filtered.include? pkg }.
       sort_by{ |pkg, c| c }.
       map{ |pkg, c| %{
-        <tr><td><a href="/pd?p=#{pkg}" class=pkglink data-target=#{pkg}>#{pkg}</a></td><td>#{c}</td>
+        <tr><td>#{render_pkgname(pkg)}</td><td>#{c}</td>
         <td>#{DistroPackage::Nix.by_internal_name[pkg].maintainers.count}</td></tr>
         <tr><td colspan=3 id=#{pkg}></td>
       } }.
@@ -281,7 +289,7 @@ get '/outdated' do
       map do |pkg, v|
         nixpkg = DistroPackage::Nix.by_internal_name[pkg]
         %{
-            <tr><td><a href="/pd?p=#{pkg}" class=pkglink data-target=#{pkg}>#{pkg}</a>#{
+            <tr><td>#{render_pkgname(pkg)}#{
               vulnerable.has_key?(pkg) ?
                 "<span class=vuln title=\"Matches #{ vulnerable[pkg].keys.join(', ')}\">(V)</span>" : ""
             }
@@ -326,7 +334,7 @@ get '/vulnerable' do
         candidates.map{ |prod, cves_raw|
           cves = cves_raw.sort.reverse
           %{
-            <tr><td><a href="/pd?p=#{pkg}" class=pkglink data-target=#{pkg}>#{pkg}:#{DistroPackage::Nix.by_internal_name[pkg].version}</a></td>
+            <tr><td>#{render_pkgname(pkg, :with_version)}</td>
             <td>#{prod}</td>
             <td>#{cves[0..(cves.size>3 ? 1 : 2)].map{|cve| render_cve(cve)}.join(', ')}
                 #{cves.size>3 ? "... #{cves.size} total" : ""}</td></tr>
