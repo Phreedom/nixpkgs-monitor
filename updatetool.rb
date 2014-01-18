@@ -3,9 +3,10 @@
 require 'optparse'
 require 'mechanize'
 require 'logger'
-require 'distro-package.rb'
-require 'package-updater.rb'
+require 'distro-package'
+require 'package-updater'
 require 'security-advisory'
+require 'reports'
 require 'sequel'
 require 'set'
 
@@ -140,6 +141,7 @@ abort "No action requested. See --help for more information." unless distros_to_
 
 distros_to_update.each do |distro|
   log.debug distro.generate_list.inspect
+  Reports::Timestamps.done("fetch_#{distro.name.split('::').last.downcase}")
 end
 
 
@@ -159,6 +161,8 @@ if actions.include? :coverage
     coverage.each do |pkg, cvalue|
       DB[:estimated_coverage] << { :pkg_attr => pkg.internal_name, :coverage => cvalue }
     end
+
+    Reports::Timestamps.done(:coverage)
   end
 
 end
@@ -192,9 +196,12 @@ if actions.include? :check_updates
         end
       end
 
+      Reports::Timestamps.done("updater_#{updater.friendly_name}")
     end
   end
-  
+
+  Reports::Timestamps.done(:updaters)
+
   DB.transaction do
     DB.create_table!(:tarballs) do
       String :pkg_attr
@@ -248,6 +255,8 @@ if actions.include? :tarballs
       end
     end
   end
+
+  Reports::Timestamps.done(:tarballs)
 
 end
 if actions.include? :patches
@@ -334,6 +343,7 @@ if actions.include? :patches
     File.write(file_name, original_content.join)
   end
 
+  Reports::Timestamps.done(:patches)
   end
 
 end
@@ -393,6 +403,8 @@ if actions.include? :build
     end
   end.
   each(&:join) # wait for threads to finish
+
+  Reports::Timestamps.done(:builds)
 
 end
 if actions.include? :check_pkg_version_match
@@ -542,6 +554,7 @@ if actions.include? :cve_check
     end
   end
 
+  Reports::Timestamps.done(:cve_check)
   end
 
 end

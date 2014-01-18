@@ -47,6 +47,7 @@ stdenv.mkDerivation {
     cp distro-package.rb $gemlibpath
     cp package-updater.rb $gemlibpath
     cp security-advisory.rb $gemlibpath
+    cp reports.rb $gemlibpath
 
     g++ nix-env-patched.cc -lexpr -lformat -lstore -lutil -lmain -lgc -o nix-env-patched
 

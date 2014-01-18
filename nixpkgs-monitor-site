@@ -5,6 +5,7 @@ require 'haml'
 require 'sequel'
 require 'distro-package'
 require 'package-updater'
+require 'reports'
 require 'cgi'
 
 db_path = './db.sqlite'
@@ -240,6 +241,12 @@ get '/' do
     :total  => DB[:patches].count,
   }
 
+  cache[:task_report] = Reports::Timestamps.all.
+      select{|action, ts| action.start_with?('updater', 'cve') }.
+      map{|action, ts| "<tr><td>#{action}</td><td>#{ts.utc.strftime("%Y-%m-%d %H:%M:%S")}</td></tr>"}.
+      join
+
+
   cache[:permaintainer_report] ||= maintainers.
       map{ |maintainer| %{
           <tr>
@@ -257,7 +264,8 @@ get '/' do
     :maintainer_report => cache[:maintainer_report],
     :needsattention_report => cache[:needsattention_report],
     :patch_stats => patch_stats,
-    :permaintainer_report => cache[:permaintainer_report]
+    :permaintainer_report => cache[:permaintainer_report],
+    :task_report => cache[:task_report],
   }
 end
 
@@ -621,6 +629,15 @@ __END__
         %th Maintainers
         %th Packages
       = maintainer_report
+
+.container
+  .dashitem#tasks
+    %table.table.table-striped.table-condensed
+      %tr
+        %th Task
+        %th Timestamp
+        %th Status
+      = task_report
 
 .container
   .dashitem#permaintainer
