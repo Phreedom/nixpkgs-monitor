@@ -420,6 +420,7 @@ get '/pd' do
   }
 end
 
+
 get '/buildlog' do
   halt 404, "derivation not specified" unless 
   build = DB[:builds][:outpath => params[:outpath]]
@@ -439,6 +440,37 @@ get '/buildlog' do
 #{log}
   }
 end
+
+
+get '/report' do
+  available_reports = {
+    :version_mismatch =>
+        "packages for which either tarball name can't be parsed or its version doesn't match the package version",
+  }
+
+  report_name = params[:name] ? params[:name].to_sym : nil
+  if report_name and not report_name.empty? and DB.table_exists?(report_name)
+    report_header = DB[report_name].columns!.map{ |r_name| "<th>#{r_name}</th>" }.join
+    report_body = DB[report_name].map do |row| %{
+      <tr>#{row.values.map{|v| "<td>#{v}</td>"}.join}</tr> }
+    end.
+    join
+
+    haml :report, :layout => :layout, :locals =>
+        { :report_header => report_header, :report_body => report_body }
+  else
+    reports = available_reports.
+      map do |r_name, r_desc| %{
+        <tr><td><a href=/report?name=#{r_name}>#{r_name}</a></td>
+        <td>#{DB.table_exists?(r_name) ? DB[r_name].count : 0}</td>
+        <td>#{r_desc}</td></tr> }
+      end.
+      join
+
+    haml :reports, :layout => :layout, :locals => { :reports => reports }
+  end
+end
+
 
 get '/refresh' do
   refresh
@@ -643,3 +675,23 @@ __END__
       %th CVE Product
       %th CVE ID(s)
     = vulnerable_report
+
+
+@@reports
+
+.dashitem
+  %table.table.table-striped.table-condensed
+    %tr
+      %th Report
+      %th # of Entries
+      %th Description
+    = reports
+
+
+@@report
+
+.dashitem
+  %table.table.table-striped.table-condensed
+    %tr
+      = report_header
+    = report_body
