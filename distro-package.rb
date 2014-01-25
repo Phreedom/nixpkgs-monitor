@@ -410,12 +410,20 @@ module DistroPackage
       "nixpkgs"
     end
 
+    def self.log_name_parse
+      @log_name_parse ||= Reports::Logs.new(:nixpkgs_failed_name_parse)
+    end
+
+    def self.log_no_sources
+      @log_no_sources ||= Reports::Logs.new(:nixpkgs_no_sources)
+    end
+
     def self.package_from_xml(pkg_xml)
       attr = pkg_xml[:attrPath]
       name = pkg_xml[:name]
       if name and attr
         package = ( name =~ /(.*?)-([^A-Za-z].*)/ ? Nix.new(attr, $1, $2) : Nix.new(attr, name, "") )
-        puts "failed to parse name for #{attr} #{name}" if package.version == ""
+        log_name_parse.pkg(attr) if package.version == ""
 
         package.drvpath = pkg_xml[:drvPath]
 
@@ -431,7 +439,7 @@ module DistroPackage
         url = pkg_xml.xpath('meta[@name="src.url"]').first
         package.url = url[:value] if url
 
-        puts "failed to find sources for #{attr} #{name}" if package.url == ""
+        log_no_sources.pkg(attr) if not(package.url) or package.url == ""
 
         rev = pkg_xml.xpath('meta[@name="src.rev"]').first
         package.revision = rev[:value] if rev
@@ -470,6 +478,9 @@ module DistroPackage
 
       puts %x(git clone https://github.com/NixOS/nixpkgs.git)
       puts %x(cd #{repository_path} && git checkout master --force && git pull --rebase)
+
+      log_name_parse.clear!
+      log_no_sources.clear!
 
       pkgs_xml = Nokogiri.XML(%x(nix-env-patched -qa '*' --attr-path --meta --xml --file ./nixpkgs/))
       pkgs_xml.xpath('items/item').each do|entry|

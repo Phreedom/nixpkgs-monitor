@@ -453,7 +453,11 @@ end
 get '/report' do
   available_reports = {
     :version_mismatch =>
-        "packages for which either tarball name can't be parsed or its version doesn't match the package version",
+        "Nix packages for which either tarball name can't be parsed or its version doesn't match the package version",
+    :nixpkgs_failed_name_parse =>
+        "Nix packages for which it was impossible to determine version from name string",
+    :nixpkgs_no_sources =>
+        "Nix packages for which no sources were specified in Nixpkgs",
   }
 
   report_name = params[:name] ? params[:name].to_sym : nil
