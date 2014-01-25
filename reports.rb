@@ -21,4 +21,31 @@ module Reports
     end
   end
 
+
+  class Logs
+
+    def initialize(logtype, clear_log = true)
+      @logtype = logtype
+      clear! if clear_log
+      DB.create_table?(@logtype) do
+        String :pkg_attr, :unique => true, :primary_key => true
+      end
+    end
+
+    def pkg(pkg_attr)
+      DB.transaction do
+        unless DB[@logtype][:pkg_attr => pkg_attr]
+          DB[@logtype] << { :pkg_attr => pkg_attr }
+        end
+      end
+    end
+
+    def clear!
+      DB.transaction do
+        DB[@logtype].delete if DB.table_exists?(@logtype)
+      end
+    end
+
+  end
+
 end
