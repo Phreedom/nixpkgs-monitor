@@ -87,6 +87,11 @@ helpers do
 
     have_patches = ( filter[:haspatch] ? Set.new( DB[:patches].select(:pkg_attr).distinct.map(:pkg_attr) ) : nil )
 
+    good_patches = (filter[:hasgoodpatch] ?
+                    Set.new( DB[:patches].join(:builds, :outpath => :outpath).where(:status => "ok").
+                             select(:pkg_attr).distinct.map(:pkg_attr) ) :
+                    nil )
+
     Set.new( DistroPackage::Nix.by_internal_name.select { |pkg, nixpkg|
       # maintainer count
       (not filter[:mc] or filter[:mc] == "" or filter[:mc].to_i == nixpkg.maintainers.count) and
@@ -94,6 +99,8 @@ helpers do
       (not filter[:c] or filter[:c] == "" or filter[:c].to_i == coverage[pkg]) and
       #vulnerable
       (not filter[:vulnerable] or vulnerable.has_key?(pkg)) and
+      # has a patch that builds
+      (not filter[:hasgoodpatch] or good_patches.include?(pkg) ) and
       # has a patch
       (not filter[:haspatch] or have_patches.include?(pkg) ) and
       # outdated which has a minor update
@@ -168,9 +175,10 @@ helpers do
           </select>
         </div>
         <div class=filteritem style="text-align: left">
-          <input type=checkbox name=vulnerable #{ render_checked(params[:vulnerable]) }>Vulnerable
-          <input type=checkbox name=haspatch #{ render_checked(params[:haspatch]) }>With patch<br>
-          <input type=checkbox name=outdated #{ render_checked(params[:outdated]) }>Outdated
+          <input type=checkbox name=vulnerable #{ render_checked(params[:vulnerable]) }>Vulnerable<br>
+          <input type=checkbox name=haspatch #{ render_checked(params[:haspatch]) }>With patch
+          (<input type=checkbox name=hasgoodpatch #{ render_checked(params[:hasgoodpatch]) }>that builds)<br>
+          <input type=checkbox name=outdated #{ render_checked(params[:outdated]) }>Outdated:
           <input type=checkbox name=outdated_minor #{ render_checked(params[:outdated_minor]) }>Minor
           <input type=checkbox name=outdated_major #{ render_checked(params[:outdated_major]) }>Major
         </div>
