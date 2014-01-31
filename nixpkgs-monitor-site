@@ -635,15 +635,6 @@ __END__
       = maintainer_report
 
 .container
-  .dashitem#tasks
-    %table.table.table-striped.table-condensed
-      %tr
-        %th Task
-        %th Timestamp
-        %th Status
-      = task_report
-
-.container
   .dashitem#permaintainer
     %table.table.table-striped.table-condensed
       %tr
@@ -653,6 +644,15 @@ __END__
         %th Not covered
         %th Vulnerable
       = permaintainer_report
+
+.container
+  .dashitem#tasks
+    %table.table.table-striped.table-condensed
+      %tr
+        %th Task
+        %th Timestamp
+        %th Status
+      = task_report
 
 
 @@coverage
