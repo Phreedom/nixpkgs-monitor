@@ -7,6 +7,7 @@ require 'distro-package'
 require 'package-updater'
 require 'reports'
 require 'cgi'
+require 'rss'
 
 db_path = './db.sqlite'
 DB = Sequel.sqlite(db_path)
@@ -343,25 +344,52 @@ end
 
 get '/vulnerable' do
   filtered = filter_packages(params)
-  report = vulnerable.
+  dataset = vulnerable.
       select{ |pkg, v| filtered.include? pkg }.
-      sort_by{ |pkg, v| pkg }.
-      map do |pkg, candidates|
-        candidates.map{ |prod, cves_raw|
-          cves = cves_raw.sort.reverse
-          %{
-            <tr><td>#{render_pkgname(pkg, :with_version)}</td>
-            <td>#{prod}</td>
-            <td>#{cves[0..(cves.size>3 ? 1 : 2)].map{|cve| render_cve(cve)}.join(', ')}
-                #{cves.size>3 ? "... #{cves.size} total" : ""}</td></tr>
-            <tr><td colspan=3 id=#{pkg}></td>
-        } }.
-        join
-      end.
-      join
+      sort_by{ |pkg, v| pkg }
 
-  haml :vulnerable, :layout => :layout,
-       :locals => { :vulnerable_report => report, :filter => render_filter(params.merge({:vulnerable => true})) }
+  if params[:rss]
+    content_type "application/rss+xml", :charset => 'utf-8'
+
+    RSS::Maker.make("2.0") do |maker|
+      maker.channel.author = "Nixpkgs Monitor"
+      maker.channel.updated = Time.now.to_s
+      maker.channel.title = "Vulnerable packages"
+      maker.channel.description = "Automatically detected matches of Nix packages against CVE vulnerability database"
+      maker.channel.link = "/vulnerable"
+
+      dataset.each do |pkg, candidates|
+        candidates.each do |prod, cves|
+          cves.each do |cve|
+            maker.items.new_item do |item|
+              item.title = "#{pkg}:#{DistroPackage::Nix.by_internal_name[pkg].version} matches #{cve} as #{prod}"
+              item.description = "#{render_pkgname(pkg, :with_version)} matches #{render_cve(cve)} as #{prod}"
+            end
+          end
+        end
+      end
+    end.to_s
+
+  else
+
+    report = dataset.
+        map do |pkg, candidates|
+          candidates.map{ |prod, cves_raw|
+            cves = cves_raw.sort.reverse
+            %{
+              <tr><td>#{render_pkgname(pkg, :with_version)}</td>
+              <td>#{prod}</td>
+              <td>#{cves[0..(cves.size>3 ? 1 : 2)].map{|cve| render_cve(cve)}.join(', ')}
+                  #{cves.size>3 ? "... #{cves.size} total" : ""}</td></tr>
+              <tr><td colspan=3 id=#{pkg}></td>
+          } }.
+          join
+        end.
+        join
+
+    haml :vulnerable, :layout => :layout,
+        :locals => { :vulnerable_report => report, :filter => render_filter(params.merge({:vulnerable => true})) }
+  end
 end
 
 
