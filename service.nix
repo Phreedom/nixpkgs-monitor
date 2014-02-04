@@ -52,6 +52,13 @@ in
         '';
       };
 
+      baseUrl = mkOption {
+        default = null;
+        description = ''
+          Base URL at which the monitor should run.
+        '';
+      };
+
       builderCount = mkOption {
         default = 1;
         description = ''
@@ -78,6 +85,9 @@ in
 
     systemd.services."nixpkgs-monitor-site" = {
       wantedBy = [ "multi-user.target" ];
+
+      environment =
+        optionalAttrs (cfg.baseUrl != null) { BASE_URL = cfg.baseUrl; };
 
       serviceConfig = {
         ExecStart = "${npmon}/bin/nixpkgs-monitor-site -p ${toString cfg.port} -o ${cfg.host}";

@@ -13,6 +13,8 @@ db_path = './db.sqlite'
 DB = Sequel.sqlite(db_path)
 cache = {}
 
+set :base_url, (ENV["BASE_URL"] || "http://monitor.nixos.org/")
+
 helpers do
 
   def maintainers
@@ -209,12 +211,13 @@ helpers do
     %{<a href="http://web.nvd.nist.gov/view/vuln/detail?vulnId=#{cve.upcase}" class=cve>#{cve.upcase}</a>}
   end
 
-  def render_pkgname(pkg, options = nil)
+  def render_pkgname(pkg, options = [])
+    options = [ options ].flatten
     nixpkg = DistroPackage::Nix.by_internal_name[pkg]
-    %{<a href="/pd?p=#{pkg}" class=pkglink data-target=#{pkg}>#{pkg}#{
+    %{<a href="#{options.include?(:with_base) ? settings.base_url : "/"}pd?p=#{pkg}" class=pkglink data-target=#{pkg}>#{pkg}#{
           nixpkg.branch ? "[#{nixpkg.branch}]" : ""
           }#{
-          options == :with_version ? ":#{nixpkg.version}" : ""
+          options.include?(:with_version) ? ":#{nixpkg.version}" : ""
       }</a>}
   end
 end
@@ -356,14 +359,14 @@ get '/vulnerable' do
       maker.channel.updated = Time.now.to_s
       maker.channel.title = "Vulnerable packages"
       maker.channel.description = "Automatically detected matches of Nix packages against CVE vulnerability database"
-      maker.channel.link = "/vulnerable"
+      maker.channel.link = settings.base_url + "vulnerable"
 
       dataset.each do |pkg, candidates|
         candidates.each do |prod, cves|
           cves.each do |cve|
             maker.items.new_item do |item|
               item.title = "#{pkg}:#{DistroPackage::Nix.by_internal_name[pkg].version} matches #{cve} as #{prod}"
-              item.description = "#{render_pkgname(pkg, :with_version)} matches #{render_cve(cve)} as #{prod}"
+              item.description = "#{render_pkgname(pkg, [:with_version, :with_base])} matches #{render_cve(cve)} as #{prod}"
             end
           end
         end
