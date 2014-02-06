@@ -551,6 +551,7 @@ div.dashitem th {
 div.dashitem table.table { margin-bottom:0 }
 div.links { float: right }
 div.filteritem { float: left; text-align: right; padding: 0 1em }
+div.filteritem select { width: 2em }
 span.vuln { color:red }
 
 .label-primary{background-color:#428bca}
