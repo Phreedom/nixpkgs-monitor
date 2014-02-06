@@ -401,7 +401,7 @@ get '/pd' do
   pkg = DistroPackage::Nix.by_internal_name[params[:p]]
   halt "package not found" unless pkg
   %{
-    #{ params[:embed] ? "" :
+    #{ request.xhr? ? "" :
       %{
         <link rel="stylesheet" href="http://hydra.nixos.org/static/bootstrap/css/bootstrap.min.css" type="text/css" />
         <link rel="stylesheet" href="/default.css" type="text/css" />
@@ -578,7 +578,7 @@ function showPackageDetails(obj) {
       elem.innerHTML=xmlhttp.responseText;
     }
   }
-  xmlhttp.open("GET","/pd?embed=yes&p=" + obj.dataset.target,true);
+  xmlhttp.open("GET","/pd?p=" + obj.dataset.target,true);
   xmlhttp.send();
   return true;
 }
