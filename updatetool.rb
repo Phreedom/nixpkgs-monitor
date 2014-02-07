@@ -241,9 +241,19 @@ if actions.include? :tarballs
     tarball = row[:tarball]
     hash = DB[:tarball_sha256][:tarball => tarball]
     unless hash
-      sha256 = %x(nix-prefetch-url #{tarball}).strip
+      (sha256, path) = %x(PRINT_PATH="1" nix-prefetch-url #{tarball}).split.map(&:strip)
       if $? == 0 and sha256 != ""
-        puts "found #{sha256} hash"
+        mimetype = %x(file -b --mime-type #{path}).strip
+        raise "failed to determine mimetype for #{path}" unless $? == 0
+
+        if tarball.end_with?(".gz", ".bz2", ".xz", ".lzma", ".zip", ".7z", ".jar",
+                             ".deb", ".rpm",".tgz", ".tbz", ".tbz2", ".lz") and
+           ["application/xml", "text/html", "application/xhtml+xml" "text/plain"].include?(mimetype)
+          sha256 = "404"
+          puts "#{path} is most likely a malformed error page. Assuming error 404."
+        else
+          puts "found #{sha256} hash for #{path}"
+        end
       else
         puts "tarball #{tarball} not found"
         sha256 = "404"
