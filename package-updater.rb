@@ -346,7 +346,8 @@ module PackageUpdater
 
       def self.tarballs
         unless @tarballs
-          @tarballs = {}
+          @tarballs = Hash.new{|h,k| h[k] = Array.new }
+          @locations = {}
           z = Zlib::GzipReader.new(StringIO.new(http_agent.get("http://www.cpan.org/indices/ls-lR.gz").body))
           unzipped = z.read
           dirs = unzipped.split("\n\n")
@@ -354,6 +355,7 @@ module PackageUpdater
             lines = dir.split("\n")
             next unless lines[0].include? '/authors/'
             #remove dir and total
+            dir = lines[0][2..-2]
             lines.delete_at(0) 
             lines.delete_at(0)
             lines.each do |line|
@@ -363,8 +365,8 @@ module PackageUpdater
               (package_name, file_version) = parse_tarball_name(tarball)
               if file_version and package_name
                 package_name = package_name.downcase
-                @tarballs[package_name] = [] unless @tarballs[package_name]
-                @tarballs[package_name] = @tarballs[package_name] << file_version 
+                @tarballs[package_name] << file_version
+                @locations[[package_name, file_version]] = "mirror://cpan/#{dir}/#{tarball}"
               else
                 log.debug "weird #{line}"
               end
@@ -373,6 +375,14 @@ module PackageUpdater
           log.debug @tarballs.inspect
         end
         @tarballs
+      end
+
+      def self.find_tarball(pkg, version)
+        return nil unless pkg.url and version and pkg.url != "" and version != "" and pkg.version != ""
+        (package_name, file_version) = parse_tarball_from_url(pkg.url)
+        return nil unless package_name
+        @tarballs # workaround to fetch data
+        @locations[[package_name.downcase, version]]
       end
 
       def self.covers?(pkg)
