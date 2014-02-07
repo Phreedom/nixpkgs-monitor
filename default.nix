@@ -18,7 +18,7 @@ let
       patches = [ ./expose-attrs.patch ];
     });
 
-  updater_runtime_deps = with pkgs; [ ruby19 git patch curl bzip2 gnutar gnugrep coreutils gnused bash ];
+  updater_runtime_deps = with pkgs; [ ruby19 git patch curl bzip2 gnutar gnugrep coreutils gnused bash file ];
 
 in
 with pkgs;
