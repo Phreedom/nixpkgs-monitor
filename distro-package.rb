@@ -9,7 +9,7 @@ module DistroPackage
 
     def initialize(internal_name, name = internal_name, version = '0', url = nil, revision = nil )
       @internal_name = internal_name
-      @name = name.downcase
+      @name = name
       @version = version
       @url = url
       @revision = revision
@@ -42,7 +42,7 @@ module DistroPackage
         DB[table_name].each do |record|
           package = deserialize(record)
           @packages << package
-          @list[package.name] = package
+          @list[package.name.downcase] = package
           @by_internal_name[package.internal_name] = package
         end
       else
@@ -310,15 +310,16 @@ module DistroPackage
 
 
     def self.match_nixpkg(pkg)
-      match = list[pkg.name]
+      pkgname = pkg.name.downcase
+      match = list[pkgname]
       return match if match
-      match = list[pkg.name.gsub(/^ruby-/,"")]
+      match = list[pkgname.gsub(/^ruby-/,"")]
       return match if match
-      match = list[pkg.name.gsub(/^python-/,"")]
+      match = list[pkgname.gsub(/^python-/,"")]
       return match if match
-      match = list[pkg.name.gsub(/^perl-/,"")]
+      match = list[pkgname.gsub(/^perl-/,"")]
       return match if match
-      match = list[pkg.name.gsub(/^haskell-(.*)-ghc\d+\.\d+\.\d+$/,'\1')]
+      match = list[pkgname.gsub(/^haskell-(.*)-ghc\d+\.\d+\.\d+$/,'\1')]
       return match if match
       return nil
     end
@@ -532,29 +533,30 @@ module DistroPackage
 
 
     def self.match_nixpkg(pkg)
-      match = list[pkg.name]
+      pkgname = pkg.name.downcase
+      match = list[pkgname]
       return match if match
 #       match = list[pkg.name.gsub(/^ruby-/,"")]
 #       return match if match
-      match = list[pkg.name.gsub(/^python-/,"")]
+      match = list[pkgname.gsub(/^python-/,"")]
       return match if match
-      match = list[pkg.name.gsub(/^perl-(.*)$/,'lib\1-perl')]
+      match = list[pkgname.gsub(/^perl-(.*)$/,'lib\1-perl')]
       return match if match
-      match = list[pkg.name.gsub(/^(haskell-.*)-ghc\d+\.\d+\.\d+$/,'\1')]
+      match = list[pkgname.gsub(/^(haskell-.*)-ghc\d+\.\d+\.\d+$/,'\1')]
       return match if match
-      match = list[pkg.name.gsub(/^xf86-(.*)$/,'xserver-xorg-\1')]
+      match = list[pkgname.gsub(/^xf86-(.*)$/,'xserver-xorg-\1')]
       return match if match
-      match = list[pkg.name+"1"]
+      match = list[pkgname+"1"]
       return match if match
-      match = list[pkg.name+"2"]
+      match = list[pkgname+"2"]
       return match if match
-      match = list[pkg.name+"3"]
+      match = list[pkgname+"3"]
       return match if match
-      match = list[pkg.name+"4"]
+      match = list[pkgname+"4"]
       return match if match
-      match = list[pkg.name+"5"]
+      match = list[pkgname+"5"]
       return match if match
-      match = list[pkg.name+"6"]
+      match = list[pkgname+"6"]
       return match if match
       return nil
     end
