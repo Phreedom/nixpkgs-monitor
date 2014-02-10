@@ -332,9 +332,8 @@ if actions.include? :patches
       patch = %x(cd #{DistroPackage::Nix.repository_path} && git diff)
       new_pkg = DistroPackage::Nix.load_package(row[:pkg_attr])
 
-      success = (new_pkg and new_pkg.url == row[:tarball] and
-                 new_pkg.sha256 == row[:sha256] and new_pkg.version == row[:version])
-      if success
+      success = (new_pkg and new_pkg.sha256 == row[:sha256] and new_pkg.version == row[:version])
+      if success and new_pkg.url == row[:tarball]
         new_pkg.instantiate
         DB[:patches] << {
             :pkg_attr => row[:pkg_attr],
@@ -344,6 +343,46 @@ if actions.include? :patches
             :drvpath => new_pkg.drvpath,
             :outpath => new_pkg.outpath
         }
+      elsif success
+        puts "trying advanced patching techniques for #{row[:pkg_attr]}"
+        # todo: handle a separate but rare case where src_url_location is not nil, but we still failed to change src
+        src_url_locations = patched_v.map.with_index do |l, i|
+                  l =~ /url\s*=.*;/ and (l.
+                    gsub("${name}", "#{nixpkg.name.sub(/^perl-/,"")}-#{nixpkg.version}").
+                    gsub("${version}", nixpkg.version).
+                    include? nixpkg.url) ? i : nil
+                end.
+                reject(&:nil?).
+                sort_by{|l| (l-sha256_location).abs }
+
+        patch_src_index = src_url_locations.index do |src_url_location|
+          patched_s = patched_v.map(&:dup) # deep copy
+          new_url = row[:tarball].dup
+
+          new_url.gsub!("#{nixpkg.name.sub(/^perl-/,"")}-#{row[:version]}", "${name}") if patched_s[src_url_location].include? "${name}"
+          new_url.gsub!(row[:version], "${version}") if patched_s[src_url_location].include? "${version}"
+          patched_s[src_url_location].sub!(/url\s*=\s*"([^"]*)"/, %{url = "#{new_url}"})
+
+          File.write(file_name, patched_s.join)
+          patch = %x(cd #{DistroPackage::Nix.repository_path} && git diff)
+          new_pkg = DistroPackage::Nix.load_package(row[:pkg_attr])
+
+          s_success = (new_pkg and new_pkg.url == row[:tarball] and new_pkg.sha256 == row[:sha256] and new_pkg.version == row[:version])
+          if s_success
+            puts "made an advanced patch! #{row[:pkg_attr]}"
+            new_pkg.instantiate
+            DB[:patches] << {
+                :pkg_attr => row[:pkg_attr],
+                :version => row[:version],
+                :tarball => row[:tarball],
+                :patch => patch,
+                :drvpath => new_pkg.drvpath,
+                :outpath => new_pkg.outpath
+            }
+          end
+          s_success
+        end
+        puts "failed advanced patching for #{row[:pkg_attr]}" unless patch_src_index
       end
       success
     end
