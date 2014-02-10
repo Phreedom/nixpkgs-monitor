@@ -577,7 +577,7 @@ module PackageUpdater
 
       def self.tarballs
         unless @tarballs
-          @tarballs = Hash.new{|h, path| h[path] = JSON.parse(http_agent.get("http://download.gnome.org#{path}cache.json").body)[2] }
+          @tarballs = Hash.new{|h, path| h[path] = JSON.parse(http_agent.get("http://download.gnome.org#{path}cache.json").body) }
         end
         @tarballs
       end
@@ -590,7 +590,7 @@ module PackageUpdater
         return nil unless pkg.url
         return nil unless pkg.url =~ %r{^mirror://gnome(/sources/[^/]*/)[^/]*/[^/]*$}
         path = $1
-        return new_tarball_versions(pkg, tarballs[path])
+        return new_tarball_versions(pkg, tarballs[path][2])
       end
 
     end
