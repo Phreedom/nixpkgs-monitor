@@ -586,6 +586,16 @@ module PackageUpdater
         return( pkg.url and pkg.url =~ %r{^mirror://gnome(/sources/[^/]*/)[^/]*/[^/]*$} and usable_version?(pkg.version) )
       end
 
+      def self.find_tarball(pkg, version)
+        return nil unless pkg.url and version and pkg.url != "" and version != "" and pkg.version != ""
+        (package_name, file_version) = parse_tarball_from_url(pkg.url)
+        return nil unless package_name
+        repo = tarballs["/sources/#{package_name}/"][1][package_name][version]
+        return nil unless repo
+        file ||= repo["tar.xz"] || repo["tar.bz2"] || repo["tar.gz"]
+        return (file ? "mirror://gnome/sources/#{package_name}/#{file}" : nil )
+      end
+
       def self.newest_versions_of(pkg)
         return nil unless pkg.url
         return nil unless pkg.url =~ %r{^mirror://gnome(/sources/[^/]*/)[^/]*/[^/]*$}
