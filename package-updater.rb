@@ -381,7 +381,7 @@ module PackageUpdater
         return nil unless pkg.url and version and pkg.url != "" and version != "" and pkg.version != ""
         (package_name, file_version) = parse_tarball_from_url(pkg.url)
         return nil unless package_name
-        @tarballs # workaround to fetch data
+        tarballs # workaround to fetch data
         @locations[[package_name.downcase, version]]
       end
 
