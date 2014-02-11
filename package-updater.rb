@@ -227,7 +227,11 @@ module PackageUpdater
 
     def self.find_tarball(pkg, version)
       return nil unless pkg.url and version and pkg.url != "" and version != "" and pkg.version != ""
-      (pkg.url.include?(pkg.version) ? pkg.url.gsub(pkg.version, version) : nil )
+      new_url = (pkg.url.include?(pkg.version) ? pkg.url.gsub(pkg.version, version) : nil )
+      return nil unless new_url
+      bz_url = new_url.sub(/\.tar\.gz$/, ".tar.bz2")
+      xz_url = bz_url.sub(/\.tar\.bz2$/, ".tar.xz")
+      [ xz_url, bz_url, new_url ]
     end
 
   end
