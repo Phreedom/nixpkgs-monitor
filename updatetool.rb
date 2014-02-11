@@ -202,28 +202,6 @@ if actions.include? :check_updates
 
   Reports::Timestamps.done(:updaters)
 
-  DB.transaction do
-    DB.create_table!(:tarballs) do
-      String :pkg_attr
-      String :version
-      String :tarball
-    end
-
-    updaters.each do |updater|
-      DB[updater.friendly_name].all.each do |row|
-        pkg = DistroPackage::Nix.by_internal_name[row[:pkg_attr]]
-
-        tarball = updater.find_tarball(pkg, row[:version])
-
-        DB[:tarballs] << {
-          :pkg_attr => row[:pkg_attr],
-          :version => row[:version],
-          :tarball => tarball
-        } if tarball
-      end
-    end
-  end
-
 end
 if actions.include? :drop_negative_tarball_cache
 
@@ -232,17 +210,11 @@ if actions.include? :drop_negative_tarball_cache
 end
 if actions.include? :tarballs
 
-  DB.create_table?(:tarball_sha256) do
-    String :tarball, :unique => true, :primary_key => true
-    String :sha256
-  end
-
-  DB[:tarballs].distinct.all.each do |row|
-    tarball = row[:tarball]
+  def fetch_tarball(tarball)
     hash = DB[:tarball_sha256][:tarball => tarball]
     unless hash
-      (sha256, path) = %x(PRINT_PATH="1" nix-prefetch-url #{tarball}).split.map(&:strip)
-      if $? == 0 and sha256 != ""
+      (sha256, path) = %x(PRINT_PATH="1" nix-prefetch-url '#{tarball}').split.map(&:strip)
+      if $? == 0 and sha256 and sha256 != ""
         mimetype = %x(file -b --mime-type #{path}).strip
         raise "failed to determine mimetype for #{path}" unless $? == 0
 
@@ -261,6 +233,37 @@ if actions.include? :tarballs
       DB.transaction do
         if 1 != DB[:tarball_sha256].where(:tarball => tarball).update(:sha256 => sha256)
           DB[:tarball_sha256] << { :tarball => tarball, :sha256 => sha256 }
+        end
+      end
+      hash = (sha256 == "404" ? nil : sha256)
+    end
+    return hash
+  end
+
+  DB.create_table?(:tarball_sha256) do
+    String :tarball, :unique => true, :primary_key => true
+    String :sha256
+  end
+
+  DB.transaction do
+    DB.create_table!(:tarballs) do
+      String :pkg_attr
+      String :version
+      String :tarball
+    end
+
+    updaters.each do |updater|
+      DB[updater.friendly_name].all.each do |row|
+        pkg = DistroPackage::Nix.by_internal_name[row[:pkg_attr]]
+
+        tarballs =  [ updater.find_tarball(pkg, row[:version]) ].flatten
+        tarballs.each do |tarball|
+          hash = tarball ? fetch_tarball(tarball) : nil
+          DB[:tarballs] << {
+            :pkg_attr => row[:pkg_attr],
+            :version => row[:version],
+            :tarball => tarball
+          } if hash
         end
       end
     end
