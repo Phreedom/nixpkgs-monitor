@@ -18,9 +18,13 @@ set :base_url, (ENV["BASE_URL"] || "http://monitor.nixos.org/")
 
 helpers do
 
+  def maintainers_with_email
+    @maintainers_with_email ||= DB[:nix_maintainers].select(:maintainer).distinct.order(:maintainer).map(:maintainer).
+        map{ |m| m.strip }
+  end
+
   def maintainers
-    @maintainers ||= DB[:nix_maintainers].select(:maintainer).distinct.order(:maintainer).map(:maintainer).
-        map{ |m| m.gsub(/<.*>/,"").strip }
+    @maintainers ||= maintainers_with_email.map{ |m| m.gsub(/<.*>/,"").strip }
   end
 
   def coverage
@@ -75,6 +79,7 @@ helpers do
     @coverage_stats = nil
     @coverage = nil
     @maintainers = nil
+    @maintainers_with_email = nil
     DistroPackage::Nix.refresh
     cache = {}
 
@@ -305,7 +310,8 @@ get '/patch' do
   halt(404, 'no matching patch found') unless patch_record
   content_type 'text/plain', :charset => 'utf-8'
   %{
-From: Nixpkgs Monitor <none@none>
+From: #{maintainers_with_email.select{|m| params[:m] and m.downcase.include? (params[:m].downcase)}.first ||
+        "Nixpkgs Monitor <none@none>" }
 Subject: #{params[:p]}: update from #{DistroPackage::Nix.by_internal_name[params[:p]].version} to #{params[:v]}#{
   vulnerable.has_key?(params[:p]) ? ", potentially fixes #{vulnerable[params[:p]].values.map{|s| s.to_a}.flatten.join(', ')}": ""
 }
