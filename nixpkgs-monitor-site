@@ -448,8 +448,9 @@ get '/pd' do
           outdated[params[:p]].map do |version, updaters|
             patch = DB[:patches][:pkg_attr => pkg.internal_name, :version => version]
             build = (patch ? DB[:builds][:outpath => patch[:outpath]] : nil)
-            tarball = DB[:tarballs].join(:tarball_sha256,:tarball => :tarball)[:pkg_attr => pkg.internal_name, :version => version]
-            url = (tarball and tarball[:sha256] != '404') ? tarball [:tarball] : ""
+            tarball = DB[:tarballs].join(:tarball_sha256,:tarball => :tarball).
+                          exclude(:sha256 => "404")[:pkg_attr => pkg.internal_name, :version => version]
+            url = (tarball ? tarball [:tarball] : "")
             %{<tr>
               <td>#{version}</td>
               <td>#{updaters.join ", "}</td>
