@@ -226,7 +226,7 @@ module PackageUpdater
 
 
     def self.find_tarball(pkg, version)
-      return nil unless pkg.url and version and pkg.url != "" and version != "" and pkg.version != ""
+      return nil if pkg.url.to_s.empty? or version.to_s.empty? or pkg.version.to_s.empty?
       new_url = (pkg.url.include?(pkg.version) ? pkg.url.gsub(pkg.version, version) : nil )
       return nil unless new_url
       bz_url = new_url.sub(/\.tar\.gz$/, ".tar.bz2")
@@ -382,7 +382,7 @@ module PackageUpdater
       end
 
       def self.find_tarball(pkg, version)
-        return nil unless pkg.url and version and pkg.url != "" and version != "" and pkg.version != ""
+        return nil if pkg.url.to_s.empty? or version.to_s.empty? or pkg.version.to_s.empty?
         (package_name, file_version) = parse_tarball_from_url(pkg.url)
         return nil unless package_name
         tarballs # workaround to fetch data
@@ -591,7 +591,7 @@ module PackageUpdater
       end
 
       def self.find_tarball(pkg, version)
-        return nil unless pkg.url and version and pkg.url != "" and version != "" and pkg.version != ""
+        return nil if pkg.url.to_s.empty? or version.to_s.empty? or pkg.version.to_s.empty?
         (package_name, file_version) = parse_tarball_from_url(pkg.url)
         return nil unless package_name
         repo = tarballs["/sources/#{package_name}/"][1][package_name][version]
@@ -652,7 +652,7 @@ module PackageUpdater
     class FetchGit < GitUpdater
 
       def self.covers?(pkg)
-        return( pkg.url and pkg.revision != "" and pkg.url.include? "git" )
+        return( pkg.url and not(pkg.revision.to_s.empty?) and pkg.url.include? "git" )
       end
 
 
@@ -701,14 +701,12 @@ module PackageUpdater
     class GitHub < GitUpdater
 
       def self.covers?(pkg)
-        return( pkg.url and not(pkg.revision) and pkg.url  =~ %r{^https?://github.com/} and usable_version?(pkg.version) )
+        return( pkg.url and pkg.revision.to_s.empty? and pkg.url  =~ %r{^https?://github.com/} and usable_version?(pkg.version) )
       end
 
       def self.newest_version_of(pkg)
-        return nil unless pkg.url
-        return nil if pkg.revision
+        return nil unless covers?(pkg)
         return nil unless %r{^https?://github.com/(?:downloads/)?(?<owner>[^/]*)/(?<repo>[^/]*)/} =~ pkg.url
-        return nil unless usable_version?(pkg.version)
 
         versions = repo_contents_to_tags( ls_remote( "https://github.com/#{owner}/#{repo}.git" ) )
         max_version = versions.reduce(pkg.version) do |v1, v2|

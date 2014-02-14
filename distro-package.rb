@@ -424,7 +424,7 @@ module DistroPackage
       name = pkg_xml[:name]
       if name and attr
         package = ( name =~ /(.*?)-([^A-Za-z].*)/ ? Nix.new(attr, $1, $2) : Nix.new(attr, name, "") )
-        log_name_parse.pkg(attr) if package.version == ""
+        log_name_parse.pkg(attr) if package.version.to_s.empty?
 
         package.drvpath = pkg_xml[:drvPath]
 
@@ -440,7 +440,7 @@ module DistroPackage
         url = pkg_xml.xpath('meta[@name="src.url"]').first
         package.url = url[:value] if url
 
-        log_no_sources.pkg(attr) if not(package.url) or package.url == ""
+        log_no_sources.pkg(attr) if package.url.to_s.empty?
 
         rev = pkg_xml.xpath('meta[@name="src.rev"]').first
         package.revision = rev[:value] if rev

@@ -103,9 +103,9 @@ helpers do
 
     Set.new( DistroPackage::Nix.by_internal_name.select { |pkg, nixpkg|
       # maintainer count
-      (not filter[:mc] or filter[:mc] == "" or filter[:mc].to_i == nixpkg.maintainers.count) and
+      (filter[:mc].to_s.empty? or filter[:mc].to_i == nixpkg.maintainers.count) and
       # coverage
-      (not filter[:c] or filter[:c] == "" or filter[:c].to_i == coverage[pkg]) and
+      (filter[:c].to_s.empty? or filter[:c].to_i == coverage[pkg]) and
       #vulnerable
       (not filter[:vulnerable] or vulnerable.has_key?(pkg)) and
       # has a patch that builds
@@ -119,7 +119,7 @@ helpers do
       #outdated
       (not filter[:outdated] or outdated.has_key?(pkg)) and
       # has maintainer
-      (not filter[:m] or filter[:m] == "" or (nixpkg.maintainers.index{ |m| m.downcase.include? filter[:m].downcase }))
+      (filter[:m].to_s.empty? or (nixpkg.maintainers.index{ |m| m.downcase.include? filter[:m].downcase }))
       # to be continued
     }.keys )
   end
