@@ -138,48 +138,46 @@ module PackageUpdater
     end
 
 
+    # returns an array of major, minor and fix versions from the available_versions array
+    def self.new_versions(version, available_versions, package_name)
+      t_pv = tokenize_version(version)
+      return nil unless t_pv
+
+      max_version_major = version
+      max_version_minor = version
+      max_version_fix = version
+      available_versions.each do |v|
+        t_v = tokenize_version(v)
+        if t_v
+          #check for and skip 345.gz == v3.4.5 versions for now
+          if t_v[0]>9 and t_v[1] = -1 and t_pv[1] != -1 and t_v[0]>5*t_pv[0]
+            log.info "found weird(too high) version of #{package_name} : #{v}. skipping"
+          else
+            max_version_major = v if (t_v[0] != t_pv[0])  and is_newer?(v, max_version_major)
+            max_version_minor = v if (t_v[0] == t_pv[0]) and (t_v[1] != t_pv[1])  and is_newer?(v, max_version_minor)
+            max_version_fix = v if (t_v[0] == t_pv[0]) and (t_v[1] == t_pv[1]) and (t_v[2] != t_pv[2])  and is_newer?(v, max_version_fix)
+          end
+        else
+          log.info "can't parse update version candidate of #{package_name} : #{v}. skipping" 
+        end
+      end
+
+      return( (max_version_major != version ? [ max_version_major ] : []) +
+              (max_version_minor != version ? [ max_version_minor ] : []) +
+              (max_version_fix   != version ? [ max_version_fix   ] : []) )
+    end
+
+
     def self.new_tarball_versions(pkg, tarballs)
       (package_name, file_version) = parse_tarball_from_url(pkg.url)
+      return nil if file_version.to_s.empty? or package_name.to_s.empty?
 
-      if file_version and package_name and true # test only
-        v1 = file_version.downcase
-        v2 = pkg.version.downcase
-        return nil unless versions_match?(pkg)
+      return nil unless versions_match?(pkg)
 
-        package_name = package_name.downcase
-        vlist = tarballs[package_name]
-        return nil unless vlist
-        t_pv = tokenize_version(v2)
-        return nil unless t_pv
-        max_version_major = v2
-        max_version_minor = v2
-        max_version_fix = v2
-        vlist.each do |v|
-          t_v = tokenize_version(v)
-          if t_v
-            #check for and skip 345.gz == v3.4.5 versions for now
-            if t_v[0]>9 and t_v[1] = -1 and t_pv[1] != -1 and t_v[0]>5*t_pv[0]
-              log.info "found weird(too high) version of #{package_name} : #{v}. skipping"
-            else
-              max_version_major = v if (t_v[0] != t_pv[0])  and is_newer?(v, max_version_major)
-              max_version_minor = v if (t_v[0] == t_pv[0]) and (t_v[1] != t_pv[1])  and is_newer?(v, max_version_minor)
-              max_version_fix = v if (t_v[0] == t_pv[0]) and (t_v[1] == t_pv[1]) and (t_v[2] != t_pv[2])  and is_newer?(v, max_version_fix)
-            end
-          else
-            log.info "found weird version of #{package_name} : #{v}. skipping" 
-          end
-        end
+      vlist = tarballs[package_name.downcase]
+      return nil unless vlist
 
-        return(
-            ((max_version_major == v2) and (max_version_minor == v2) and (max_version_fix == v2)) ? nil
-            : [
-                (max_version_major != v2 ? max_version_major : nil),
-                (max_version_minor != v2 ? max_version_minor : nil),
-                (max_version_fix   != v2 ? max_version_fix   : nil)
-              ]
-        )
-      end
-      return nil
+      return new_versions(pkg.version.downcase, vlist, package_name)
     end
 
 

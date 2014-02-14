@@ -183,11 +183,11 @@ if actions.include? :check_updates
       end
 
       pkgs_to_check.each do |pkg|
-        new_ver = updater.newest_versions_of pkg
-        if new_ver
+        new_ver = updater.newest_versions_of(pkg).to_a.flatten.reject(&:nil?)
+        unless new_ver.empty?
           puts "#{pkg.internal_name}/#{pkg.name}:#{pkg.version} " +
                "has new version(s) #{new_ver} according to #{updater.friendly_name}"
-          new_ver.reject(&:nil?).each do |version|
+          new_ver.each do |version|
             DB[updater.friendly_name] << {
               :pkg_attr => pkg.internal_name,
               :version => version,
