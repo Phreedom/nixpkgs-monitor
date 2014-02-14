@@ -331,7 +331,7 @@ module DistroPackage
   # which break matching because nixpks keeps only 1 of the packages
   # with the same name
   class Nix < Package
-    attr_accessor :homepage, :branch, :sha256, :maintainers, :position, :outpath, :drvpath
+    attr_accessor :homepage, :repository_git, :branch, :sha256, :maintainers, :position, :outpath, :drvpath
     @cache_name = "nix"
 
     def version
@@ -346,7 +346,11 @@ module DistroPackage
 
 
     def serialize
-      return super.merge({ :homepage => @homepage, :branch => @branch, :sha256 => @sha256, :position => @position })
+      return super.merge({ :homepage => @homepage,
+                           :repository_git => @repository_git,
+                           :branch => @branch,
+                           :sha256 => @sha256,
+                           :position => @position })
     end
 
     def instantiate
@@ -357,6 +361,7 @@ module DistroPackage
     def self.deserialize(val)
       pkg = super(val)
       pkg.homepage = val[:homepage]
+      pkg.repository_git = val[:repository_git]
       pkg.branch = val[:branch]
       pkg.sha256 = val[:sha256]
       pkg.position = val[:position]
@@ -370,6 +375,7 @@ module DistroPackage
         String :internal_name, :unique => true, :primary_key => true
         String :name
         String :version
+        String :repository_git
         String :branch
         String :url
         String :revision
@@ -431,8 +437,8 @@ module DistroPackage
         outpath = pkg_xml.xpath('output[@name="out"]').first
         package.outpath = outpath[:path] if outpath
 
-        url = pkg_xml.xpath('meta[@name="repositories.git"]').first
-        package.url = url[:value] if url
+        repository_git = pkg_xml.xpath('meta[@name="repositories.git"]').first
+        package.repository_git = repository_git[:value] if repository_git
 
         url = pkg_xml.xpath('meta[@name="src.repo"]').first
         package.url = url[:value] if url
