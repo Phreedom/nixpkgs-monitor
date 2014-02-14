@@ -706,11 +706,8 @@ module PackageUpdater
         return nil unless covers?(pkg)
         return nil unless %r{^https?://github.com/(?:downloads/)?(?<owner>[^/]*)/(?<repo>[^/]*)/} =~ pkg.url
 
-        versions = repo_contents_to_tags( ls_remote( "https://github.com/#{owner}/#{repo}.git" ) )
-        max_version = versions.reduce(pkg.version) do |v1, v2|
-          ( usable_version?(v2) and is_newer?(v2, v1) ) ? v2 : v1
-        end
-        return (max_version != pkg.version ? max_version : nil)
+        available_versions = repo_contents_to_tags( ls_remote( "https://github.com/#{owner}/#{repo}.git" ) )
+        return new_versions(pkg.version.downcase, available_versions, pkg.internal_name)
       end
 
     end
