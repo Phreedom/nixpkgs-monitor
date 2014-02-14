@@ -713,6 +713,24 @@ module PackageUpdater
     end
 
 
+    # Handles packages which specify meta.repositories.git.
+    class MetaGit < GitUpdater
+
+      # if meta.repository.git is the same as src.url, defer to FetchGit updater
+      def self.covers?(pkg)
+        return( not(pkg.repository_git.to_s.empty?) and (pkg.repository_git != pkg.url) and usable_version?(pkg.version) )
+      end
+
+      def self.newest_version_of(pkg)
+        return nil unless covers?(pkg)
+
+        available_versions = repo_contents_to_tags( ls_remote( pkg.repository_git ) )
+        return new_versions(pkg.version.downcase, available_versions, pkg.internal_name)
+      end
+
+    end
+
+
     class XFCE < Updater
     end
 
@@ -808,6 +826,7 @@ module PackageUpdater
              Repository::NPMJS,
              Repository::FetchGit,
              Repository::GitHub,
+             Repository::MetaGit,
              GentooDistfiles,
              Distro::Arch,
              Distro::Debian,
