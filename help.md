@@ -49,3 +49,8 @@ Before committing a patch, take a look at its build log to check for irregularit
 even if it compiles and is a minor update.
 
 A patch can be applied using curl 'patch url'|git am
+
+It's recommended to re-set the author fields before pushing to nixpkgs. You can do
+this for a of a whole bunch of commits in one go:
+
+    git filter-branch --env-filter 'export GIT_AUTHOR_NAME="Joe Doe" GIT_AUTHOR_EMAIL=joe@example.com' origin/master..master
