@@ -48,3 +48,7 @@ It's recommended to re-set the author fields before pushing to nixpkgs. You can 
 this for a of a whole bunch of commits in one go:
 
     git filter-branch --env-filter 'export GIT_AUTHOR_NAME="Joe Doe" GIT_AUTHOR_EMAIL=joe@example.com' origin/master..master
+
+Alternatively, you can add 'm' parameter to the patch url with a substring of maintainer
+name. Usually 2-3 chars is enough to uniquely identify maintainer.
+eg http://monitor.nixos.org/patch?p=xxx&v=1.2.3&m=ph is enough to properly set the author field.
