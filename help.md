@@ -23,13 +23,7 @@ compiles).
 
 (V) beside the package name: the package is potentially vulnerable
 
-Beside version numbers:
-
-(P) the patch is available and builds fine
-
-(f) the patch is available but failed to build
-
-(p) the patch is available but not yet built
+Version numbers are color coded to indicate whether a patch is available and its status(queued, failed, built).
 
 ## Package Details
 
