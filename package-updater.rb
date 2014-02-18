@@ -795,7 +795,8 @@ module PackageUpdater
     class Gentoo < Updater
 
       def self.covers?(pkg)
-        return ( DistroPackage::Gentoo.match_nixpkg(pkg) and usable_version?(pkg.version) and not Repository::CPAN.covers?(pkg) )
+        return ( DistroPackage::Gentoo.match_nixpkg(pkg) and usable_version?(pkg.version) and
+                 not Repository::CPAN.covers?(pkg) and not Repository::Hackage.covers?(pkg) )
       end
 
       def self.newest_version_of(pkg)
