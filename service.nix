@@ -120,5 +120,13 @@ in
       };
     };
 
+    systemd.services."nixpkgs-monitor-updater-drop-negative-cache" = {
+      serviceConfig = {
+        ExecStart = "${npmon}/bin/updatetool.rb --redownload --rebuild";
+        User = cfg.user;
+        WorkingDirectory = cfg.baseDir;
+      };
+    };
+
   };
 }
