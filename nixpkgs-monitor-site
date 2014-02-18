@@ -290,10 +290,41 @@ get '/outdated' do
   patches = DB[:patches].left_join(:builds, :outpath => :outpath).select_hash_groups([:pkg_attr, :version], :status)
 
   filtered = filter_packages(params)
-  report = outdated.
+  dataset = outdated.
       select{ |pkg, v| filtered.include? pkg }.
-      sort_by{ |pkg, v| pkg }.
-      map do |pkg, v|
+      sort_by{ |pkg, v| pkg }
+
+  if params[:rss]
+    content_type "application/rss+xml", :charset => 'utf-8'
+
+    RSS::Maker.make("2.0") do |maker|
+      maker.channel.author = "Nixpkgs Monitor"
+      maker.channel.updated = Time.now.to_s
+      maker.channel.title = "Outdated packages"
+      maker.channel.description = "Automatically detected updated versions of Nix packages"
+      maker.channel.link = settings.base_url + "outdated"
+
+      dataset.each do |pkg, versions|
+        versions.keys.each do |version|
+          if params[:hasgoodpatch]
+            build_record = patches[ [ pkg, version ] ]
+            next unless build_record and build_record[0] == "ok"
+          end
+
+          nixpkg = DistroPackage::Nix.by_internal_name[pkg]
+          maker.items.new_item do |item|
+            item.title = "#{pkg}#{
+                nixpkg.branch ? "[#{nixpkg.branch}]" : ""
+              }:#{nixpkg.version} has a new version #{version}"
+            item.description = "#{render_pkgname(pkg, [:with_version, :with_base])} has a new version #{version}"
+          end
+        end
+      end
+    end.to_s
+
+  else
+
+    report = dataset.map do |pkg, v|
         nixpkg = DistroPackage::Nix.by_internal_name[pkg]
         %{
             <tr><td>#{render_pkgname(pkg)}#{
@@ -314,6 +345,7 @@ get '/outdated' do
 
     haml :outdated, :layout => :layout,
          :locals => { :outdated_report => report, :filter => render_filter(params.merge({:outdated => true})) }
+  end
 end
 
 
