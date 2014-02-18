@@ -401,7 +401,7 @@ if actions.include? :patches
 end
 if actions.include? :drop_negative_build_cache
 
-  DB[:builds].where(:status => "failed").delete
+  DB[:builds].exclude(:status => "ok").delete
 
 end
 if actions.include? :build
