@@ -514,7 +514,7 @@ end
 
 get '/refresh' do
   refresh
-  "Refresh Done"
+  redirect back
 end
 
 
