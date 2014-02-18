@@ -458,7 +458,7 @@ module DistroPackage
         package.position = position[:value].rpartition('/nixpkgs/')[2] if position
 
         # if the package file name looks like a version, it is probably a branch, at least for haskell
-        if package.position and package.position.include? '/haskell/'
+        if package.position and package.internal_name.start_with? 'haskellPackages'
           file_name = File.basename(package.position).split('.')
           version = (file_name.last.start_with?('nix') ? file_name[0..-2] : file_name)
           package.branch = version.join('.') if version.reject{|s| s.to_i.to_s == s }.empty?
