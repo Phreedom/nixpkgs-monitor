@@ -12,38 +12,40 @@ require 'rss'
 
 db_path = './db.sqlite'
 DB = Sequel.sqlite(db_path)
-cache = {}
 
 set :base_url, (ENV["BASE_URL"] || "http://monitor.nixos.org/")
 
-helpers do
+
+  def cache
+    @@cache ||= {}
+  end
 
   def maintainers_with_email
-    @maintainers_with_email ||= DB[:nix_maintainers].select(:maintainer).distinct.order(:maintainer).map(:maintainer).
+    @@maintainers_with_email ||= DB[:nix_maintainers].select(:maintainer).distinct.order(:maintainer).map(:maintainer).
         map{ |m| m.strip }
   end
 
   def maintainers
-    @maintainers ||= maintainers_with_email.map{ |m| m.gsub(/<.*>/,"").strip }
+    @@maintainers ||= maintainers_with_email.map{ |m| m.gsub(/<.*>/,"").strip }
   end
 
   def coverage
-    @coverage ||= DB[:estimated_coverage].all.
+    @@coverage ||= DB[:estimated_coverage].all.
         each_with_object({}){ |c, coverage| coverage[c[:pkg_attr]] = c[:coverage] }
   end
 
   def coverage_stats
-    @coverage_stats ||= coverage.values.
+    @@coverage_stats ||= coverage.values.
         each_with_object(Hash.new(0)){ |c, cstat| cstat[c] += 1 }
   end
 
   def maintainer_stats
-    @maintainer_stats ||= DistroPackage::Nix.packages.
+    @@maintainer_stats ||= DistroPackage::Nix.packages.
         each_with_object(Hash.new(0)){ |pkg, mstat| mstat[pkg.maintainers.count] += 1 }
   end
 
   def outdated
-    @outdated ||= PackageUpdater::Updaters.each.
+    @@outdated ||= PackageUpdater::Updaters.each.
         with_object(Hash.new{|h,k| h[k] = Hash.new{|h,k| h[k] = Array.new } }) do |updater, data|
           DB[updater.friendly_name].all.each do |row|
             pkg = DistroPackage::Nix.by_internal_name[row[:pkg_attr]]
@@ -84,15 +86,15 @@ helpers do
   end
 
   def refresh
-    @vulnerable = nil
-    @outdated = nil
-    @maintainer_stats = nil
-    @coverage_stats = nil
-    @coverage = nil
-    @maintainers = nil
-    @maintainers_with_email = nil
+    @@vulnerable = nil
+    @@outdated = nil
+    @@maintainer_stats = nil
+    @@coverage_stats = nil
+    @@coverage = nil
+    @@maintainers = nil
+    @@maintainers_with_email = nil
     DistroPackage::Nix.refresh
-    cache = {}
+    cache.clear
 
     vulnerable
     outdated
@@ -206,7 +208,6 @@ helpers do
           options.include?(:with_version) ? ":#{nixpkg.version}" : ""
       }</a>}
   end
-end
 
 
 get '/' do
