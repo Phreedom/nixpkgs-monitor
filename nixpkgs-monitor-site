@@ -181,13 +181,13 @@ set :base_url, (ENV["BASE_URL"] || "http://monitor.nixos.org/")
     }
   end
 
-  def render_versions(pkg, versions, patches)
+  def render_versions(pkg, versions, patches, for_m)
     versions.map do |version, updaters|
       build_record = patches[ [ pkg, version ] ]
       patch_label = (build_record and build_record[0]) ? (build_record[0] == "ok" ? "label-success" : "label-danger" ) : "label-primary"
 
       if patches.key? ([ pkg, version ])
-        "<span title=\"#{updaters.join(', ')}\"><a href=/patch?p=#{pkg}&v=#{version} class=\"label #{patch_label}\">#{version}</a></span>"
+        "<span title=\"#{updaters.join(', ')}\"><a href=/patch?p=#{pkg}&v=#{version}#{for_m && "&m=#{CGI::escape(for_m)}"} class=\"label #{patch_label}\">#{version}</a></span>"
       else
         "<span title=\"#{updaters.join(', ')}\" class=\"label label-default\">#{version}</span>"
       end
@@ -209,6 +209,21 @@ set :base_url, (ENV["BASE_URL"] || "http://monitor.nixos.org/")
       }</a>}
   end
 
+
+helpers do
+
+  def personalize_for
+    (params[:for_m] && params[:for_m].downcase) ||
+    (request.cookies['maintainer'] && request.cookies['maintainer'].downcase)
+  end
+
+  def personalize_list
+    (["I'm..."] + maintainers).map{|m| "<option #{
+        render_selected(personalize_for && m.downcase.include?(personalize_for))
+      }>#{m}</option>"}.join
+  end
+
+end
 
 get '/' do
   cache[:coverage_report] ||= coverage_stats.
@@ -244,7 +259,6 @@ get '/' do
       select{|action, ts| action.start_with?('updater', 'cve') }.
       map{|action, ts| "<tr><td>#{action}</td><td>#{ts.utc.strftime("%Y-%m-%d %H:%M:%S")}</td></tr>"}.
       join
-
 
   cache[:permaintainer_report] ||= maintainers.
       map{ |maintainer| %{
@@ -334,9 +348,9 @@ get '/outdated' do
             </td>
             <td>#{nixpkg.version}</td>
             <td>#{
-                render_versions(pkg, v.select { |version, updaters| not is_major_update?(nixpkg, version) }, patches)
+                render_versions(pkg, v.select { |version, updaters| not is_major_update?(nixpkg, version) }, patches, personalize_for)
             }</td><td>#{
-                render_versions(pkg, v.select { |version, updaters| is_major_update?(nixpkg, version) }, patches)
+                render_versions(pkg, v.select { |version, updaters| is_major_update?(nixpkg, version) }, patches, personalize_for)
             }</td>
             <tr><td colspan=4 id=#{pkg}></td></tr>
         }
@@ -475,7 +489,7 @@ get '/pd' do
               <td>#{version}</td>
               <td>#{updaters.join ", "}</td>
               <td><a href="#{url}">#{url}</a></td>
-              <td>#{ patch ? "<a href=/patch?p=#{pkg.internal_name}&v=#{version}>yes</a>" : "" }</td>
+              <td>#{ patch ? "<a href=/patch?p=#{pkg.internal_name}&v=#{version}#{personalize_for && "&m=#{CGI::escape(personalize_for)}"}>yes</a>" : "" }</td>
               <td>#{ build ? "<a href=/buildlog?outpath=#{CGI::escape(build[:outpath])}>#{build[:status]}</a>" : "" }</td>
               </tr>
             }
@@ -613,6 +627,22 @@ for (var i = 0; i < list.length; i++) {
   })(list[i]);
 }
 
+function setCookie(cname,cvalue,exdays) {
+  var d = new Date();
+  d.setTime(d.getTime()+(exdays*24*60*60*1000));
+  var expires = "expires="+d.toGMTString();
+  document.cookie = cname + "=" + cvalue + "; " + expires;
+}
+
+var identify = document.getElementById('identify');
+
+if(identify) {
+  identify.onchange = (function() {
+    setCookie('maintainer', identify.value, 356);
+    return !(location.reload());
+  } )
+}
+
 DETAILS
 end
 
@@ -634,6 +664,9 @@ __END__
 
       .nav-collapse.collapse
         %ul.nav.pull-right
+          %li
+            %select#identify(name="maintainer")
+              = personalize_list
           %li
             %a(href="http://github.com/phreedom/nixpkgs-monitor/blob/master/help.md") info
           %li
