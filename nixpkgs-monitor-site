@@ -504,12 +504,11 @@ end
 
 
 get '/buildlog' do
-  halt 404, "derivation not specified" unless 
-  build = DB[:builds][:outpath => params[:outpath]]
-  halt 404, "package not found" unless build
+  halt 404, "derivation not specified" unless params[:outpath]
+  log = BuildLog.get_log(params[:outpath])
+  halt 404, "log not found" unless log
   content_type 'text/plain', :charset => 'utf-8'
 
-  log = build[:log]
   lint = BuildLog.lint(log)
 
   %{

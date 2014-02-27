@@ -1,3 +1,5 @@
+require "open-uri"
+
 module BuildLog
 
   def BuildLog.lint(log)
@@ -28,6 +30,25 @@ module BuildLog
     end
 
     return lint
+  end
+
+
+  def BuildLog.sanitize(log)
+    log.gsub(%r{/nix/store/(\S{32})}, '/nix/store/...')
+  end
+
+
+  def BuildLog.get_hydra_log(outpath)
+    open("http://hydra.nixos.org/log/#{outpath.sub(%r{^/nix/store/},"")}").read rescue nil
+  end
+
+  def BuildLog.get_db_log(outpath)
+    build = DB[:builds][:outpath => outpath]
+    build && build[:log]
+  end
+
+  def BuildLog.get_log(outpath)
+    get_db_log(outpath) || get_hydra_log(outpath)
   end
 
 end
