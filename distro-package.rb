@@ -350,7 +350,9 @@ module DistroPackage
                            :repository_git => @repository_git,
                            :branch => @branch,
                            :sha256 => @sha256,
-                           :position => @position })
+                           :position => @position,
+                           :outpath => @outpath,
+                           :drvpath => @drvpath })
     end
 
     def instantiate
@@ -365,6 +367,8 @@ module DistroPackage
       pkg.branch = val[:branch]
       pkg.sha256 = val[:sha256]
       pkg.position = val[:position]
+      pkg.drvpath = val[:drvpath]
+      pkg.outpath = val[:outpath]
       pkg.maintainers = []
       return pkg
     end
@@ -382,6 +386,8 @@ module DistroPackage
         String :sha256
         String :position
         String :homepage
+        String :drvpath
+        String :outpath
       end
 
       db.create_table!(:nix_maintainers) do
@@ -496,7 +502,7 @@ module DistroPackage
       log_name_parse.clear!
       log_no_sources.clear!
 
-      pkgs_xml = Nokogiri.XML(%x(nix-env-patched -qa '*' --attr-path --meta --xml --file ./nixpkgs/))
+      pkgs_xml = Nokogiri.XML(%x(nix-env-patched -qa '*' --attr-path --meta --xml --out-path --drv-path --file ./nixpkgs/))
       pkgs_xml.xpath('items/item').each do|entry|
         package = package_from_xml(entry)
         if package
