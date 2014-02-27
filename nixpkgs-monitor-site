@@ -9,6 +9,7 @@ require 'build-log'
 require 'reports'
 require 'cgi'
 require 'rss'
+require 'diffy'
 
 db_path = './db.sqlite'
 DB = Sequel.sqlite(db_path)
@@ -490,7 +491,7 @@ get '/pd' do
               <td>#{updaters.join ", "}</td>
               <td><a href="#{url}">#{url}</a></td>
               <td>#{ patch ? "<a href=/patch?p=#{pkg.internal_name}&v=#{version}#{personalize_for && "&m=#{CGI::escape(personalize_for)}"}>yes</a>" : "" }</td>
-              <td>#{ build ? "<a href=/buildlog?outpath=#{CGI::escape(build[:outpath])}>#{build[:status]}</a>" : "" }</td>
+              <td>#{ build ? "<a href=/buildlog?outpath=#{CGI::escape(build[:outpath])}>#{build[:status]}</a>(<a href=/builddiff?old=#{CGI::escape(pkg.outpath)}&new=#{CGI::escape(build[:outpath])}>diff</a>)" : "" }</td>
               </tr>
             }
           end.
@@ -520,6 +521,17 @@ get '/buildlog' do
 }
 #{log}
   }
+end
+
+
+get '/builddiff' do
+  halt 404, "derivations not specified" unless params[:old] and params[:new]
+  oldlog = BuildLog.get_log(params[:old])
+  newlog = BuildLog.get_log(params[:new])
+  halt 404, "log not found" unless oldlog and newlog
+
+  "<style>#{Diffy::CSS}</style>" +
+  Diffy::Diff.new(BuildLog.sanitize(oldlog), BuildLog.sanitize(newlog), :context => 2).to_s(:html)
 end
 
 

@@ -7,7 +7,7 @@ let
     };
   };
 
-  required_gems = with pkgs.rubyLibs; [ mechanize sequel sqlite3 sinatra haml ];
+  required_gems = with pkgs.rubyLibs; [ mechanize sequel sqlite3 sinatra haml diffy ];
   nix_fresh = pkgs.lib.overrideDerivation pkgs.nix (a: {
       src = if nix_src != null then nix_src else
       pkgs.fetchurl {
@@ -65,7 +65,7 @@ stdenv.mkDerivation {
           --set RUBYOPT rubygems
 
     wrapProgram "$out/bin/nixpkgs-monitor-site" \
-          --set PATH "${ruby19}/bin" \
+          --set PATH "${ruby19}/bin:${diffutils}/bin:${which}/bin" \
           --prefix GEM_PATH : "$GEM_PATH" \
           --prefix RUBYLIB : "${rubygems}/lib:$gemlibpath" \
           --set RUBYOPT rubygems
