@@ -10,6 +10,7 @@ require 'reports'
 require 'cgi'
 require 'rss'
 require 'diffy'
+require 'uri'
 
 db_path = './db.sqlite'
 DB = Sequel.sqlite(db_path)
@@ -224,6 +225,15 @@ helpers do
       }>#{m}</option>"}.join
   end
 
+
+  def rss_link
+    uri =  URI.parse(request.fullpath)
+    new_query_ar = URI.decode_www_form(uri.query || []) << ["rss", "on"]
+    uri.query = URI.encode_www_form(new_query_ar)
+
+    return (@rss_available && %{<li><a href="#{uri.to_s}">rss</a></li>})
+  end
+
 end
 
 get '/' do
@@ -302,6 +312,7 @@ end
 
 
 get '/outdated' do
+  @rss_available = true
   patches = DB[:patches].left_join(:builds, :outpath => :outpath).select_hash_groups([:pkg_attr, :version], :status)
 
   filtered = filter_packages(params)
@@ -381,6 +392,8 @@ end
 
 
 get '/vulnerable' do
+  @rss_available = true
+
   filtered = filter_packages(params)
   dataset = vulnerable.
       select{ |pkg, v| filtered.include? pkg }.
@@ -678,6 +691,7 @@ __END__
           %li
             %select#identify(name="maintainer")
               = personalize_list
+          = rss_link
           %li
             %a(href="http://github.com/phreedom/nixpkgs-monitor/blob/master/help.md") info
           %li
