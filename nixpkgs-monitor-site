@@ -12,8 +12,7 @@ require 'rss'
 require 'diffy'
 require 'uri'
 
-db_path = './db.sqlite'
-DB = Sequel.sqlite(db_path)
+DB = (ENV["DB"] && Sequel.connect(ENV["DB"])) || Sequel.sqlite('./db.sqlite')
 
 set :base_url, (ENV["BASE_URL"] || "http://monitor.nixos.org/")
 

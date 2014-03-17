@@ -30,8 +30,7 @@ pkg_names_to_check = []
 builds_ignore_negative = false
 builder_count = 1
 
-db_path = './db.sqlite'
-DB = Sequel.sqlite(db_path)
+DB = (ENV["DB"] && Sequel.connect(ENV["DB"])) || Sequel.sqlite('./db.sqlite')
 
 distros_to_update = Set.new
 

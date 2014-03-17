@@ -4,10 +4,15 @@ let
   pkgs = import <nixpkgs> {
     config = {
       gems.generated = import ./gems.nix;
+      gems.patches = { gems, postgresql }: {
+        pg = {
+          buildInputs = [ postgresql ];
+        };
+      };
     };
   };
 
-  required_gems = with pkgs.rubyLibs; [ mechanize sequel sqlite3 sinatra haml diffy ];
+  required_gems = with pkgs.rubyLibs; [ mechanize sequel sqlite3 sinatra haml diffy pg ];
   nix_fresh = pkgs.lib.overrideDerivation pkgs.nix (a: {
       src = if nix_src != null then nix_src else
       pkgs.fetchurl {
