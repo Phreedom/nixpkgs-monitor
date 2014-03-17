@@ -3,27 +3,28 @@
 g: # Get dependencies from patched gems
 {
   aliases = {
-    diffy = g.diffy_3_0_1;
+    diffy = g.diffy_3_0_2;
     haml = g.haml_4_0_5;
+    pg = g.pg_0_17_1;
     rack = g.rack_1_5_2;
     rack_protection = g.rack_protection_1_5_2;
-    sequel = g.sequel_4_7_0;
+    sequel = g.sequel_4_8_0;
     sinatra = g.sinatra_1_4_4;
     sqlite3 = g.sqlite3_1_3_9;
     tilt = g.tilt_2_0_0;
   };
-  gem_nix_args = [ ''diffy'' ''haml'' ''sequel'' ''sinatra'' ''sqlite3'' ];
+  gem_nix_args = [ ''diffy'' ''haml'' ''pg'' ''sequel'' ''sinatra'' ''sqlite3'' ];
   gems = {
-    diffy_3_0_1 = {
+    diffy_3_0_2 = {
       basename = ''diffy'';
       meta = {
         description = ''A convenient way to diff string in ruby'';
-        homepage = ''http://github.com/samg/diffy/tree/master'';
+        homepage = ''http://github.com/samg/diffy'';
         longDescription = ''Convenient diffing in ruby'';
       };
-      name = ''diffy-3.0.1'';
+      name = ''diffy-3.0.2'';
       requiredGems = [  ];
-      sha256 = ''0cd5axbsdggf8ggp86p2hp8541fxidpy9l6ny6b231qlhd02qy5m'';
+      sha256 = ''15qyjmmspc52dlp91yc6ij5bkn61pp8j6i7pk9gyba8q430sd2v4'';
     };
     haml_4_0_5 = {
       basename = ''haml'';
@@ -40,6 +41,35 @@ but it can function as a stand-alone templating engine.
       name = ''haml-4.0.5'';
       requiredGems = [ g.tilt_2_0_0 ];
       sha256 = ''1xmzb0k5q271090crzmv7dbw8ss4289bzxklrc0fhw6pw3kcvc85'';
+    };
+    pg_0_17_1 = {
+      basename = ''pg'';
+      meta = {
+        description = ''Pg is the Ruby interface to the {PostgreSQL RDBMS}[http://www.postgresql.org/]'';
+        homepage = ''https://bitbucket.org/ged/ruby-pg'';
+        longDescription = ''Pg is the Ruby interface to the {PostgreSQL RDBMS}[http://www.postgresql.org/].
+
+It works with {PostgreSQL 8.4 and later}[http://www.postgresql.org/support/versioning/].
+
+A small example usage:
+
+  #!/usr/bin/env ruby
+
+  require 'pg'
+
+  # Output a table of current connections to the DB
+  conn = PG.connect( dbname: 'sales' )
+  conn.exec( "SELECT * FROM pg_stat_activity" ) do |result|
+    puts "     PID | User             | Query"
+  result.each do |row|
+      puts " %7d | %-16s | %s " %
+        row.values_at('procpid', 'usename', 'current_query')
+    end
+  end'';
+      };
+      name = ''pg-0.17.1'';
+      requiredGems = [  ];
+      sha256 = ''19hhlq5cp0cgm9b8daxjn8rkk8fq7bxxv1gd43l2hk0qgy7kx4z7'';
     };
     rack_1_5_2 = {
       basename = ''rack'';
@@ -70,16 +100,16 @@ Also see http://rack.github.com/.
       requiredGems = [ g.rack_1_5_2 ];
       sha256 = ''0qabb9d3i0fy9prwwmjxzb3xx4n1myb88dcsri4m27sc8ylcv6kz'';
     };
-    sequel_4_7_0 = {
+    sequel_4_8_0 = {
       basename = ''sequel'';
       meta = {
         description = ''The Database Toolkit for Ruby'';
         homepage = ''http://sequel.jeremyevans.net'';
         longDescription = ''The Database Toolkit for Ruby'';
       };
-      name = ''sequel-4.7.0'';
+      name = ''sequel-4.8.0'';
       requiredGems = [  ];
-      sha256 = ''1jw7mk7q4jvdp70krfp59i4zdr83s2x7cc8gyakcjxgik1vawgp0'';
+      sha256 = ''0cybz6b5f05jr57xps62zwxw0ba4pwh8g7pyaykm4pnv5wbrjchp'';
     };
     sinatra_1_4_4 = {
       basename = ''sinatra'';
