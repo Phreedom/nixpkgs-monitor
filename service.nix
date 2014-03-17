@@ -6,6 +6,8 @@ let
 
   cfg = config.services.nixpkgs-monitor;
 
+  env_db = optionalAttrs (cfg.database != null) { DB = cfg.database; };
+
   npmon = import ./default.nix {};
 
 in
@@ -59,6 +61,14 @@ in
         '';
       };
 
+      database = mkOption {
+        default = null;
+        example = "postgres://db_user:db_password@host/db_name";
+        description = ''
+          Use the specified database instead of the default(sqlite) one.
+        '';
+      };
+
       builderCount = mkOption {
         default = 1;
         description = ''
@@ -87,6 +97,7 @@ in
       wantedBy = [ "multi-user.target" ];
 
       environment =
+        env_db //
         optionalAttrs (cfg.baseUrl != null) { BASE_URL = cfg.baseUrl; };
 
       serviceConfig = {
@@ -106,7 +117,7 @@ in
         GIT_SSL_CAINFO = "/etc/ssl/certs/ca-bundle.crt";
         CURL_CA_BUNDLE = "/etc/ssl/certs/ca-bundle.crt";
         NIX_PATH = "/nix/var/nix/profiles/per-user/root/channels/nixos"; # to be able to prefetch mirror:// urls
-      };
+      } // env_db;
 
       script = ''
         ${npmon}/bin/updatetool.rb --all
@@ -121,6 +132,7 @@ in
     };
 
     systemd.services."nixpkgs-monitor-updater-drop-negative-cache" = {
+      environment = env_db;
       serviceConfig = {
         ExecStart = "${npmon}/bin/updatetool.rb --redownload --rebuild";
         User = cfg.user;
