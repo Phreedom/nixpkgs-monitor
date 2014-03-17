@@ -543,7 +543,9 @@ get '/builddiff' do
   halt 404, "log not found" unless oldlog and newlog
 
   "<style>#{Diffy::CSS}</style>" +
-  Diffy::Diff.new(BuildLog.sanitize(oldlog), BuildLog.sanitize(newlog), :context => 2).to_s(:html)
+  Diffy::Diff.new(BuildLog.sanitize(oldlog, {params[:old] => 'OUTPATH'}),
+                  BuildLog.sanitize(newlog, {params[:new] => 'OUTPATH'}),
+                  :context => 2).to_s(:html)
 end
 
 

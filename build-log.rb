@@ -33,8 +33,10 @@ module BuildLog
   end
 
 
-  def BuildLog.sanitize(log)
-    log.gsub(%r{/nix/store/(\S{32})}, '/nix/store/...')
+  def BuildLog.sanitize(log, substitutes = {})
+    sanitized = log.dup
+    substitutes.each{ |orig, value| sanitized.gsub!(orig, value) }
+    sanitized.gsub(%r{/nix/store/(\S{32})}, '/nix/store/...')
   end
 
 
