@@ -33,8 +33,11 @@ module BuildLog
   end
 
 
-  def BuildLog.sanitize(log, substitutes = {})
+  def BuildLog.sanitize(log, outpath, substitutes = {})
     sanitized = log.dup
+    sanitized.gsub!(outpath, 'OUTPATH') unless outpath.to_s.empty?
+    pkgname = outpath && outpath.partition('-')[2]
+    sanitized.gsub!(%r{/tmp/nix-build-#{pkgname}.drv-\d*/#{pkgname}},'BUILDPATH') unless pkgname.to_s.empty?
     substitutes.each{ |orig, value| sanitized.gsub!(orig, value) }
     sanitized.gsub(%r{/nix/store/(\S{32})}, '/nix/store/...')
   end
