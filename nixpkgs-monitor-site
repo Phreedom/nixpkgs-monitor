@@ -241,6 +241,10 @@ helpers do
 
 end
 
+
+set(:rss_requested) { |value| condition { not(params[:rss].nil?) == value } }
+
+
 get '/' do
   cache[:coverage_report] ||= coverage_stats.
       sort_by{ |cnum, ccnt| cnum }.
@@ -316,67 +320,67 @@ get '/coverage' do
 end
 
 
-get '/outdated' do
-  @rss_available = true
-  patches = DB[:patches].left_join(:builds, :outpath => :outpath).select_hash_groups([:pkg_attr, :version], :status)
-
+before '/outdated' do
   filtered = filter_packages(params)
-  dataset = outdated.
+  @dataset = outdated.
       select{ |pkg, v| filtered.include? pkg }.
       sort_by{ |pkg, v| pkg }
+  @patches = DB[:patches].left_join(:builds, :outpath => :outpath).select_hash_groups([:pkg_attr, :version], :status)
+end
 
-  if params[:rss]
-    content_type "application/rss+xml", :charset => 'utf-8'
+get '/outdated', :rss_requested => true do
+  content_type "application/rss+xml", :charset => 'utf-8'
 
-    RSS::Maker.make("2.0") do |maker|
-      maker.channel.author = "Nixpkgs Monitor"
-      maker.channel.updated = Time.now.to_s
-      maker.channel.title = "Outdated packages"
-      maker.channel.description = "Automatically detected updated versions of Nix packages"
-      maker.channel.link = settings.base_url + "outdated"
+  RSS::Maker.make("2.0") do |maker|
+    maker.channel.author = "Nixpkgs Monitor"
+    maker.channel.updated = Time.now.to_s
+    maker.channel.title = "Outdated packages"
+    maker.channel.description = "Automatically detected updated versions of Nix packages"
+    maker.channel.link = settings.base_url + "outdated"
 
-      dataset.each do |pkg, versions|
-        versions.keys.each do |version|
-          if params[:hasgoodpatch]
-            build_record = patches[ [ pkg, version ] ]
-            next unless build_record and build_record[0] == "ok"
-          end
+    @dataset.each do |pkg, versions|
+      versions.keys.each do |version|
+        if params[:hasgoodpatch]
+          build_record = @patches[ [ pkg, version ] ]
+          next unless build_record and build_record[0] == "ok"
+        end
 
-          nixpkg = DistroPackage::Nix.by_internal_name[pkg]
-          maker.items.new_item do |item|
-            item.title = "#{pkg}#{
-                nixpkg.branch ? "[#{nixpkg.branch}]" : ""
-              }:#{nixpkg.version} has a new version #{version}"
-            item.description = "#{render_pkgname(pkg, [:with_version, :with_base])} has a new version #{version}"
-          end
+        nixpkg = DistroPackage::Nix.by_internal_name[pkg]
+        maker.items.new_item do |item|
+          item.title = "#{pkg}#{
+              nixpkg.branch ? "[#{nixpkg.branch}]" : ""
+            }:#{nixpkg.version} has a new version #{version}"
+          item.description = "#{render_pkgname(pkg, [:with_version, :with_base])} has a new version #{version}"
         end
       end
-    end.to_s
+    end
+  end.to_s
+end
 
-  else
+get '/outdated', :rss_requested => false do
+  @rss_available = true
 
-    report = dataset.map do |pkg, v|
-        nixpkg = DistroPackage::Nix.by_internal_name[pkg]
-        %{
-            <tr><td>#{render_pkgname(pkg)}#{
-              vulnerable.has_key?(pkg) ?
-                "<span class=vuln title=\"Matches #{ vulnerable[pkg].keys.join(', ')}\">(V)</span>" : ""
-            }
-            </td>
-            <td>#{nixpkg.version}</td>
-            <td>#{
-                render_versions(pkg, v.select { |version, updaters| not is_major_update?(nixpkg, version) }, patches, personalize_for)
-            }</td><td>#{
-                render_versions(pkg, v.select { |version, updaters| is_major_update?(nixpkg, version) }, patches, personalize_for)
-            }</td>
-            <tr><td colspan=4 id=#{pkg}></td></tr>
-        }
-      end.
-      join
+  report = @dataset.map do |pkg, v|
+      nixpkg = DistroPackage::Nix.by_internal_name[pkg]
+      %{
+          <tr><td>#{render_pkgname(pkg)}#{
+            vulnerable.has_key?(pkg) ?
+              "<span class=vuln title=\"Matches #{ vulnerable[pkg].keys.join(', ')}\">(V)</span>" : ""
+          }
+          </td>
+          <td>#{nixpkg.version}</td>
+          <td>#{
+              render_versions(pkg, v.select { |version, updaters| not is_major_update?(nixpkg, version) }, @patches, personalize_for)
+          }</td><td>#{
+              render_versions(pkg, v.select { |version, updaters| is_major_update?(nixpkg, version) }, @patches, personalize_for)
+          }</td>
+          <tr><td colspan=4 id=#{pkg}></td></tr>
+      }
+    end.
+    join
 
-    haml :outdated, :layout => :layout,
-         :locals => { :outdated_report => report, :filter => render_filter(params.merge({:outdated => true})) }
-  end
+  haml :outdated, :layout => :layout,
+       :locals => { :outdated_report => report, :filter => render_filter(params.merge({:outdated => true})) }
 end
 
 
@@ -396,56 +400,57 @@ Subject: #{params[:p]}: update from #{DistroPackage::Nix.by_internal_name[params
 end
 
 
-get '/vulnerable' do
-  @rss_available = true
-
+before '/vulnerable' do
   filtered = filter_packages(params)
-  dataset = vulnerable.
+  @dataset = vulnerable.
       select{ |pkg, v| filtered.include? pkg }.
       sort_by{ |pkg, v| pkg }
+end
 
-  if params[:rss]
-    content_type "application/rss+xml", :charset => 'utf-8'
+get '/vulnerable', :rss_requested => true do
+  content_type "application/rss+xml", :charset => 'utf-8'
 
-    RSS::Maker.make("2.0") do |maker|
-      maker.channel.author = "Nixpkgs Monitor"
-      maker.channel.updated = Time.now.to_s
-      maker.channel.title = "Vulnerable packages"
-      maker.channel.description = "Automatically detected matches of Nix packages against CVE vulnerability database"
-      maker.channel.link = settings.base_url + "vulnerable"
+  RSS::Maker.make("2.0") do |maker|
+    maker.channel.author = "Nixpkgs Monitor"
+    maker.channel.updated = Time.now.to_s
+    maker.channel.title = "Vulnerable packages"
+    maker.channel.description = "Automatically detected matches of Nix packages against CVE vulnerability database"
+    maker.channel.link = settings.base_url + "vulnerable"
 
-      dataset.each do |pkg, candidates|
-        candidates.each do |prod, cves|
-          cves.each do |cve|
-            maker.items.new_item do |item|
-              item.title = "#{pkg}:#{DistroPackage::Nix.by_internal_name[pkg].version} matches #{cve} as #{prod}"
-              item.description = "#{render_pkgname(pkg, [:with_version, :with_base])} matches #{render_cve(cve)} as #{prod}"
-            end
+    @dataset.each do |pkg, candidates|
+      candidates.each do |prod, cves|
+        cves.each do |cve|
+          maker.items.new_item do |item|
+            item.title = "#{pkg}:#{DistroPackage::Nix.by_internal_name[pkg].version} matches #{cve} as #{prod}"
+            item.description = "#{render_pkgname(pkg, [:with_version, :with_base])} matches #{render_cve(cve)} as #{prod}"
           end
         end
       end
-    end.to_s
+    end
+  end.to_s
+end
 
-  else
+get '/vulnerable', :rss_requested => false do
+  @rss_available = true
 
-    report = dataset.
-        map do |pkg, candidates|
-          candidates.map{ |prod, cves_raw|
-            cves = cves_raw.sort.reverse
-            %{
-              <tr><td>#{render_pkgname(pkg, :with_version)}</td>
-              <td>#{prod}</td>
-              <td>#{cves[0..(cves.size>3 ? 1 : 2)].map{|cve| render_cve(cve)}.join(', ')}
-                  #{cves.size>3 ? "... #{cves.size} total" : ""}</td></tr>
-              <tr><td colspan=3 id=#{pkg}></td>
-          } }.
-          join
+  report = @dataset.
+      map do |pkg, candidates|
+        candidates.map do |prod, cves_raw|
+          cves = cves_raw.sort.reverse
+          %{
+            <tr><td>#{render_pkgname(pkg, :with_version)}</td>
+            <td>#{prod}</td>
+            <td>#{cves[0..(cves.size>3 ? 1 : 2)].map{|cve| render_cve(cve)}.join(', ')}
+                #{cves.size>3 ? "... #{cves.size} total" : ""}</td></tr>
+            <tr><td colspan=3 id=#{pkg}></td>
+          }
         end.
         join
+      end.
+      join
 
-    haml :vulnerable, :layout => :layout,
-        :locals => { :vulnerable_report => report, :filter => render_filter(params.merge({:vulnerable => true})) }
-  end
+  haml :vulnerable, :layout => :layout,
+      :locals => { :vulnerable_report => report, :filter => render_filter(params.merge({:vulnerable => true})) }
 end
 
 
