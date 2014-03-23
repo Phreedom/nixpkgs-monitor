@@ -224,13 +224,19 @@ helpers do
       }>#{m}</option>"}.join
   end
 
-
-  def rss_link
+  def rss_url
     uri =  URI.parse(request.fullpath)
     new_query_ar = URI.decode_www_form(uri.query || []) << ["rss", "on"]
     uri.query = URI.encode_www_form(new_query_ar)
+    return uri.to_s
+  end
 
-    return (@rss_available && %{<li><a href="#{uri.to_s}">rss</a></li>})
+  def rss_link
+    @rss_available && %{<li><a href="#{rss_url}">rss</a></li>}
+  end
+
+  def rss_meta_link
+    @rss_available && %{<link rel="alternate" title="RSS" href="#{rss_url}" type="application/rss+xml">}
   end
 
 end
@@ -680,6 +686,7 @@ __END__
 <link rel="stylesheet" href="http://hydra.nixos.org/static/css/hydra.css" type="text/css" />
 <link rel="stylesheet" href="http://hydra.nixos.org/static/bootstrap/css/bootstrap-responsive.min.css" type="text/css" />
 <link rel="stylesheet" href="/default.css" type="text/css" />
+= rss_meta_link
 
 .navbar.navbar-fixed-top
   .navbar-inner
