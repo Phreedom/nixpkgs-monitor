@@ -614,7 +614,7 @@ module PackageUpdater
       def self.ls_remote(repo)
         @repo_cache = {} unless @repo_cache
         unless @repo_cache[repo]
-          @repo_cache[repo] = %x(GIT_ASKPASS="echo" SSH_ASKPASS= git ls-remote #{repo}).split("\n")
+          @repo_cache[repo] = %x(GIT_ASKPASS="echo" SSH_ASKPASS= git ls-remote #{repo}).force_encoding("iso-8859-1").split("\n")
         end
         @repo_cache[repo]
       end
