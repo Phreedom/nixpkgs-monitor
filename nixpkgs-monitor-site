@@ -276,8 +276,11 @@ get '/' do
   }
 
   cache[:task_report] = Reports::Timestamps.all.
-      select{|action, ts| action.start_with?('updater', 'cve') }.
-      map{|action, ts| "<tr><td>#{action}</td><td>#{ts.utc.strftime("%Y-%m-%d %H:%M:%S")}</td></tr>"}.
+      map{|ts| %{
+          <tr><td>#{ts[:action]}</td>
+              <td>#{ts[:timestamp].utc.strftime("%Y-%m-%d %H:%M:%S")}</td>
+              <td>#{ts[:message]}</td></tr>
+      } }.
       join
 
   cache[:permaintainer_report] ||= maintainers.

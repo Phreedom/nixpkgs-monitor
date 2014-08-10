@@ -139,8 +139,13 @@ end
 abort "No action requested. See --help for more information." unless distros_to_update.count > 0 or actions.count > 0
 
 distros_to_update.each do |distro|
-  log.debug distro.generate_list.inspect
-  Reports::Timestamps.done("fetch_#{distro.name.split('::').last.downcase}")
+  begin
+    log.debug distro.generate_list.inspect
+    Reports::Timestamps.done("fetch_#{distro.name.split('::').last.downcase}", "found #{distro.packages.count} packages")
+  rescue Exception => e
+    Reports::Timestamps.done("fetch_#{distro.name.split('::').last.downcase}", "error: #{e}")
+    raise
+  end
 end
 
 
@@ -173,29 +178,33 @@ if actions.include? :check_updates
                   )
 
   updaters.each do |updater|
-    DB.transaction do
+    begin
+      DB.transaction do
 
-      DB.create_table!(updater.friendly_name) do
-        String :pkg_attr
-        String :version
-        primary_key [ :pkg_attr, :version ]
-      end
+        DB.create_table!(updater.friendly_name) do
+          String :pkg_attr
+          String :version
+          primary_key [ :pkg_attr, :version ]
+        end
 
-      pkgs_to_check.each do |pkg|
-        new_ver = updater.newest_versions_of(pkg).to_a.flatten.reject(&:nil?)
-        unless new_ver.empty?
-          puts "#{pkg.internal_name}/#{pkg.name}:#{pkg.version} " +
-               "has new version(s) #{new_ver} according to #{updater.friendly_name}"
-          new_ver.each do |version|
-            DB[updater.friendly_name] << {
-              :pkg_attr => pkg.internal_name,
-              :version => version,
-            }
+        pkgs_to_check.each do |pkg|
+          new_ver = updater.newest_versions_of(pkg).to_a.flatten.reject(&:nil?)
+          unless new_ver.empty?
+            puts "#{pkg.internal_name}/#{pkg.name}:#{pkg.version} " +
+                "has new version(s) #{new_ver} according to #{updater.friendly_name}"
+            new_ver.each do |version|
+              DB[updater.friendly_name] << {
+                :pkg_attr => pkg.internal_name,
+                :version => version,
+              }
+            end
           end
         end
-      end
 
-      Reports::Timestamps.done("updater_#{updater.friendly_name}")
+        Reports::Timestamps.done("updater_#{updater.friendly_name}", "Found #{DB[updater.friendly_name].count} updates")
+      end
+    rescue => e
+      Reports::Timestamps.done("updater_#{updater.friendly_name}", "Error: #{e}")
     end
   end
 
