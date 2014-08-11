@@ -5,12 +5,6 @@ module Reports
 
     def self.done(action, message = nil)
       DB.transaction do
-        DB.create_table?(:timestamps) do
-          String :action, :unique => true, :primary_key => true
-          Time :timestamp
-          String :message
-        end
-
         if 1 != DB[:timestamps].where(:action => action.to_s).update(:timestamp => Time.now, :message => message)
           DB[:timestamps] << { :action => action.to_s, :timestamp => Time.now, :message => message }
         end
@@ -28,9 +22,6 @@ module Reports
     def initialize(logtype, clear_log = true)
       @logtype = logtype
       clear! if clear_log
-      DB.create_table?(@logtype) do
-        String :pkg_attr, :unique => true, :primary_key => true
-      end
     end
 
     def pkg(pkg_attr)

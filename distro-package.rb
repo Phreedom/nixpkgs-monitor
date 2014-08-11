@@ -83,17 +83,6 @@ module DistroPackage
     end
 
 
-    def self.create_table(db)
-      db.create_table!(table_name) do
-        String :internal_name, :unique => true, :primary_key => true
-        String :name
-        String :version
-        String :url
-        String :revision
-      end
-    end
-
-
     def self.serialize_to_db(db, list)
       list.each do |package|
         db[table_name] << package.serialize
@@ -103,7 +92,6 @@ module DistroPackage
 
     def self.serialize_list(list)
       DB.transaction do
-        create_table(DB)
         serialize_to_db(DB, list)
       end
     end
@@ -257,19 +245,6 @@ module DistroPackage
     end
 
 
-    def self.create_table(db)
-      db.create_table!(table_name) do
-        String :internal_name, :unique => true, :primary_key => true
-        String :name
-        String :version
-        String :url
-        String :version_overlay
-        String :version_upstream
-        String :revision
-      end
-    end
-
-
     def serialize
       return super.merge({:version_overlay => @version_overlay, :version_upstream => @version_upstream})
     end
@@ -371,29 +346,6 @@ module DistroPackage
       pkg.outpath = val[:outpath]
       pkg.maintainers = []
       return pkg
-    end
-
-
-    def self.create_table(db)
-      db.create_table!(table_name) do
-        String :internal_name, :unique => true, :primary_key => true
-        String :name
-        String :version
-        String :repository_git
-        String :branch
-        String :url
-        String :revision
-        String :sha256
-        String :position
-        String :homepage
-        String :drvpath
-        String :outpath
-      end
-
-      db.create_table!(:nix_maintainers) do
-        String :internal_name
-        String :maintainer
-      end
     end
 
 

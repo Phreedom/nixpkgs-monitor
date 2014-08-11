@@ -138,6 +138,9 @@ end
 
 abort "No action requested. See --help for more information." unless distros_to_update.count > 0 or actions.count > 0
 
+Sequel.extension :migration
+Sequel::Migrator.run(DB, File.join(File.dirname(__FILE__), '..', 'lib', 'migrations') )
+
 distros_to_update.each do |distro|
   begin
     log.debug distro.generate_list.inspect
@@ -157,10 +160,7 @@ if actions.include? :coverage
   end
 
   DB.transaction do
-    DB.create_table!(:estimated_coverage) do
-      String :pkg_attr, :unique => true, :primary_key => true
-      Integer :coverage
-    end
+    DB[:estimated_coverage].delete
 
     coverage.each do |pkg, cvalue|
       DB[:estimated_coverage] << { :pkg_attr => pkg.internal_name, :coverage => cvalue }
@@ -180,12 +180,7 @@ if actions.include? :check_updates
   updaters.each do |updater|
     begin
       DB.transaction do
-
-        DB.create_table!(updater.friendly_name) do
-          String :pkg_attr
-          String :version
-          primary_key [ :pkg_attr, :version ]
-        end
+        DB[updater.friendly_name].delete
 
         pkgs_to_check.each do |pkg|
           new_ver = updater.newest_versions_of(pkg).to_a.flatten.reject(&:nil?)
@@ -248,17 +243,8 @@ if actions.include? :tarballs
     return hash
   end
 
-  DB.create_table?(:tarball_sha256) do
-    String :tarball, :unique => true, :primary_key => true
-    String :sha256
-  end
-
   DB.transaction do
-    DB.create_table!(:tarballs) do
-      String :pkg_attr
-      String :version
-      String :tarball
-    end
+    DB[:tarballs].delete
 
     updaters.each do |updater|
       DB[updater.friendly_name].all.each do |row|
@@ -275,9 +261,9 @@ if actions.include? :tarballs
         end
       end
     end
-  end
 
-  Reports::Timestamps.done(:tarballs)
+    Reports::Timestamps.done(:tarballs)
+  end
 
 end
 if actions.include? :patches
@@ -286,16 +272,9 @@ if actions.include? :patches
 
   DB.transaction do
 
+  DB[:patches].delete
+
   # this is the biggest and ugliest collection of hacks
-  DB.create_table!(:patches) do
-    String :pkg_attr
-    String :version
-    String :tarball
-    primary_key [ :pkg_attr, :version, :tarball ]
-    Text :patch
-    String :drvpath
-    String :outpath
-  end
 
   DB[:tarballs].join(:tarball_sha256,:tarball => :tarball).exclude(:sha256 => "404").distinct.all.each  do |row|
     nixpkg = DistroPackage::Nix.by_internal_name[row[:pkg_attr]]
@@ -414,12 +393,6 @@ if actions.include? :drop_negative_build_cache
 end
 if actions.include? :build
 
-  DB.create_table?(:builds) do
-    String :outpath, :unique => true, :primary_key => true
-    String :status
-    String :log
-  end
-
   queue = Queue.new
 
   DB[:patches].distinct.all.each do |row|
@@ -470,9 +443,7 @@ end
 if actions.include? :check_pkg_version_match
 
   DB.transaction do
-    DB.create_table!(:version_mismatch) do
-      String :pkg_attr, :unique => true, :primary_key => true
-    end
+    DB[:version_mismatch].delete
 
     DistroPackage::Nix.packages.each do |pkg|
       unless Updater.versions_match?(pkg)
@@ -562,12 +533,7 @@ if actions.include? :cve_check
 
   DB.transaction do
 
-  DB.create_table!(:cve_match) do
-    String :pkg_attr#, :primary_key => true
-    String :product
-    String :version
-    String :CVE
-  end
+  DB[:cve_match].delete
 
   products.each_pair do |product, versions|
     next if product_blacklist.include? product
