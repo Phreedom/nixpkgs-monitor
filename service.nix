@@ -109,7 +109,7 @@ in
     };
 
     systemd.services."nixpkgs-monitor-updater" = {
-      path = [ pkgs.nix ];
+      path = [ pkgs.nix pkgs.xz ];
       environment = {
         NIX_REMOTE = "daemon";
         NIX_CONF_DIR = "/etc/nix";

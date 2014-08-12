@@ -488,10 +488,10 @@ module DistroPackage
       deb_list = {}
 
       puts "Downloading repository metadata"
-      %x(curl http://ftp.debian.org/debian/dists/sid/main/source/Sources.bz2 -o debian-main.bz2)
-      %x(curl http://ftp.debian.org/debian/dists/sid/contrib/source/Sources.bz2 -o debian-contrib.bz2)
-      %x(curl http://ftp.debian.org/debian/dists/sid/non-free/source/Sources.bz2 -o debian-non-free.bz2)
-      %x(bzcat debian-main.bz2 debian-contrib.bz2 debian-non-free.bz2 >debian-sources)
+      %x(curl http://ftp.debian.org/debian/dists/sid/main/source/Sources.xz -o debian-main.xz)
+      %x(curl http://ftp.debian.org/debian/dists/sid/contrib/source/Sources.xz -o debian-contrib.xz)
+      %x(curl http://ftp.debian.org/debian/dists/sid/non-free/source/Sources.xz -o debian-non-free.xz)
+      %x(xzcat debian-main.xz debian-contrib.xz debian-non-free.xz >debian-sources)
 
       File.read('debian-sources').split("\n\n").each do |pkgmeta|
         pkg_name = $1 if pkgmeta =~ /Package:\s*(.*)/
