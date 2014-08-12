@@ -154,16 +154,12 @@ end
 
 if actions.include? :coverage
 
-  coverage = {}
-  DistroPackage::Nix.packages.each do |pkg|
-    coverage[pkg] = Updaters.map{ |updater| (updater.covers?(pkg) ? 1 : 0) }.reduce(:+)
-  end
-
   DB.transaction do
     DB[:estimated_coverage].delete
 
-    coverage.each do |pkg, cvalue|
-      DB[:estimated_coverage] << { :pkg_attr => pkg.internal_name, :coverage => cvalue }
+    DistroPackage::Nix.packages.each do |pkg|
+      DB[:estimated_coverage] << { :pkg_attr => pkg.internal_name,
+                                   :coverage => Updaters.count{ |updater| updater.covers?(pkg) } }
     end
 
     Reports::Timestamps.done(:coverage)
