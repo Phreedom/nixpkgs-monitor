@@ -457,6 +457,7 @@ module DistroPackage
       log_no_sources.clear!
 
       pkgs_xml = Nokogiri.XML(%x(nix-env-patched -qa '*' --attr-path --meta --xml --out-path --drv-path --file ./nixpkgs/))
+      raise "nixpkgs evaluation failed" unless $? == 0
       pkgs_xml.xpath('items/item').each do|entry|
         package = package_from_xml(entry)
         if package
