@@ -439,14 +439,12 @@ end
 if actions.include? :check_pkg_version_match
 
   DB.transaction do
+    version_mismatch = Reports::Logs.new(:version_mismatch)
     DB[:version_mismatch].delete
 
-    DistroPackage::Nix.packages.each do |pkg|
-      unless Updater.versions_match?(pkg)
-        puts pkg.serialize 
-        DB[:version_mismatch] << pkg.internal_name
-      end
-    end
+    DistroPackage::Nix.packages.
+      reject{|pkg| Updater.versions_match?(pkg)}.
+      each{|pkg| version_mismatch.pkg(pkg.internal_name)}
   end
 
 end
