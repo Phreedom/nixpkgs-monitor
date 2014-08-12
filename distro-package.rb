@@ -84,6 +84,7 @@ module DistroPackage
 
 
     def self.serialize_to_db(db, list)
+      db[table_name].delete
       list.each do |package|
         db[table_name] << package.serialize
       end
@@ -351,6 +352,7 @@ module DistroPackage
 
     def self.serialize_to_db(db, list)
       super
+      db[:nix_maintainers].delete
       list.each do |package|
         package.maintainers.each do |maintainer|
           db[:nix_maintainers] << { :internal_name => package.internal_name, :maintainer =>maintainer }

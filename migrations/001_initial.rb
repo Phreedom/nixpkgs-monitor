@@ -102,6 +102,14 @@ Sequel.migration do
       String :revision
     end
 
+    create_table!(:packages_aur) do
+      String :internal_name, :unique => true, :primary_key => true
+      String :name
+      String :version
+      String :url
+      String :revision
+    end
+
     create_table!(:packages_debian) do
       String :internal_name, :unique => true, :primary_key => true
       String :name
