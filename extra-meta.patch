@@ -15,24 +15,24 @@ index e65dc4e..8e70859 100644
                              }
                          }
 +
-+                        const Symbol  sRepositories(globals.state.symbols.create("repositories")),
-+                                      sGit(globals.state.symbols.create("git")),
-+                                      sSrc(globals.state.symbols.create("src")),
-+                                      sRev(globals.state.symbols.create("rev")),
-+                                      sUrl(globals.state.symbols.create("url")),
-+                                      sUrls(globals.state.symbols.create("urls")),
-+                                      sOutputHash(globals.state.symbols.create("outputHash"));
++                        const Symbol  sRepositories(globals.state->symbols.create("repositories")),
++                                      sGit(globals.state->symbols.create("git")),
++                                      sSrc(globals.state->symbols.create("src")),
++                                      sRev(globals.state->symbols.create("rev")),
++                                      sUrl(globals.state->symbols.create("url")),
++                                      sUrls(globals.state->symbols.create("urls")),
++                                      sOutputHash(globals.state->symbols.create("outputHash"));
 +
 +                        // meta.repositories special case handling
-+                        Bindings::iterator meta_raw = i->attrs->find(globals.state.sMeta);
++                        Bindings::iterator meta_raw = i->attrs->find(globals.state->sMeta);
 +                        if (meta_raw != i->attrs->end()) {
-+                            globals.state.forceAttrs(*meta_raw->value);
++                            globals.state->forceAttrs(*meta_raw->value);
 +                            Bindings::iterator repositories = meta_raw->value->attrs->find(sRepositories);
 +                            if (repositories != meta_raw->value->attrs->end()) {
-+                                globals.state.forceAttrs(*repositories->value);
++                                globals.state->forceAttrs(*repositories->value);
 +                                Bindings::iterator git = repositories->value->attrs->find(sGit);
 +                                if (git != repositories->value->attrs->end()) {
-+                                    globals.state.forceValue(*git->value);
++                                    globals.state->forceValue(*git->value);
 +                                    if (git->value->type == tString) {
 +                                        XMLAttrs attrs4;
 +                                        attrs4["name"] = "repositories.git";
@@ -48,18 +48,18 @@ index e65dc4e..8e70859 100644
 +                        // src attr special case handling
 +                        Bindings::iterator src = i->attrs->find(sSrc);
 +                        if (src != i->attrs->end()) {
-+                            globals.state.forceValue(*src->value);
++                            globals.state->forceValue(*src->value);
 +                            if (src->value->type == tAttrs) {
 +                                Bindings::iterator urls = src->value->attrs->find(sUrls);
 +                                if (urls != src->value->attrs->end()) {
-+                                    globals.state.forceList(*urls->value);
++                                    globals.state->forceList(*urls->value);
 +                                    if (urls->value->list.length > 0) {
 +                                        XMLAttrs attrs5;
 +                                        Value *url = urls->value->list.elems[0];
 +
 +                                        attrs5["name"] = "src.url";
 +                                        attrs5["type"] = "string";
-+                                        attrs5["value"] = globals.state.forceStringNoCtx(*url);
++                                        attrs5["value"] = globals.state->forceStringNoCtx(*url);
 +                                        xml.writeEmptyElement("meta", attrs5);
 +                                    }
 +                                }
@@ -68,12 +68,12 @@ index e65dc4e..8e70859 100644
 +                                   XMLAttrs attrs6;
 +                                   attrs6["name"] = "src.repo";
 +                                   attrs6["type"] = "string";
-+                                   attrs6["value"] = globals.state.forceStringNoCtx(*url->value);
++                                   attrs6["value"] = globals.state->forceStringNoCtx(*url->value);
 +                                   xml.writeEmptyElement("meta", attrs6);
 +                                }
 +                                Bindings::iterator rev = src->value->attrs->find(sRev);
 +                                if (rev != src->value->attrs->end()) {
-+                                   globals.state.forceValue(*rev->value);
++                                   globals.state->forceValue(*rev->value);
 +                                   XMLAttrs attrs7;
 +                                   attrs7["name"] = "src.rev";
 +                                   attrs7["type"] = "string";
@@ -89,7 +89,7 @@ index e65dc4e..8e70859 100644
 +                                   XMLAttrs attrs6;
 +                                   attrs6["name"] = "src.sha256";
 +                                   attrs6["type"] = "string";
-+                                   attrs6["value"] = globals.state.forceStringNoCtx(*sha256->value);
++                                   attrs6["value"] = globals.state->forceStringNoCtx(*sha256->value);
 +                                   xml.writeEmptyElement("meta", attrs6);
 +                                }
 +                            }
