@@ -1,8 +1,17 @@
 diff --git a/src/libexpr/get-drvs.hh b/src/libexpr/get-drvs.hh
-index aaafff1..515a4cb 100644
+index 98f7624..82cd6d2 100644
 --- a/src/libexpr/get-drvs.hh
 +++ b/src/libexpr/get-drvs.hh
-@@ -26,13 +26,15 @@ private:
+@@ -14,6 +14,8 @@ struct DrvInfo
+ public:
+     typedef std::map<string, Path> Outputs;
+ 
++    Bindings * attrs;
++
+ private:
+     EvalState * state;
+ 
+@@ -24,7 +26,7 @@ private:
  
      bool failed; // set if we get an AssertionError
  
@@ -11,11 +20,15 @@ index aaafff1..515a4cb 100644
  
      Bindings * getMeta();
  
-     bool checkMeta(Value & v);
- 
- public:
-+    Bindings * attrs;
-+
-     string name;
+@@ -35,9 +37,9 @@ public:
      string attrPath; /* path towards the derivation */
      string system;
+ 
+-    DrvInfo(EvalState & state) : state(&state), failed(false), attrs(0), meta(0) { };
++    DrvInfo(EvalState & state) : attrs(0), state(&state), failed(false), meta(0) { };
+     DrvInfo(EvalState & state, const string & name, const string & attrPath, const string & system, Bindings * attrs)
+-        : state(&state), failed(false), attrs(attrs), meta(0), name(name), attrPath(attrPath), system(system) { };
++        : attrs(attrs), state(&state), failed(false), meta(0), name(name), attrPath(attrPath), system(system) { };
+ 
+     string queryDrvPath();
+     string queryOutPath();

@@ -439,7 +439,7 @@ module DistroPackage
 
 
     def self.load_package(pkg)
-      pkgs_xml = Nokogiri.XML(%x(nix-env-patched -qaA '#{pkg}' --attr-path --meta --xml --out-path --drv-path --file ./nixpkgs/))
+      pkgs_xml = Nokogiri.XML(%x(nix-env -qaA '#{pkg}' --attr-path --meta --xml --out-path --drv-path --file ./nixpkgs/))
       entry = pkgs_xml.xpath('items/item').first
       return nil unless entry and entry[:attrPath] == pkg
       package = package_from_xml(entry)
@@ -456,7 +456,7 @@ module DistroPackage
       log_name_parse.clear!
       log_no_sources.clear!
 
-      pkgs_xml = Nokogiri.XML(%x(nix-env-patched -qa '*' --attr-path --meta --xml --out-path --drv-path --file ./nixpkgs/))
+      pkgs_xml = Nokogiri.XML(%x(nix-env -qa '*' --attr-path --meta --xml --out-path --drv-path --file ./nixpkgs/))
       raise "nixpkgs evaluation failed" unless $? == 0
       pkgs_xml.xpath('items/item').each do|entry|
         package = package_from_xml(entry)
