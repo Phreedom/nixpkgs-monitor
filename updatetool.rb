@@ -212,7 +212,7 @@ if actions.include? :tarballs
   def fetch_tarball(tarball)
     hash = DB[:tarball_sha256][:tarball => tarball]
     unless hash
-      (sha256, path) = %x(PRINT_PATH="1" nix-prefetch-url '#{tarball}').split.map(&:strip)
+      (sha256, path) = %x(NIX_PATH=. PRINT_PATH="1" nix-prefetch-url '#{tarball}').split.map(&:strip)
       if $? == 0 and sha256 and sha256 != ""
         mimetype = %x(file -b --mime-type #{path}).strip
         raise "failed to determine mimetype for #{path}" unless $? == 0
