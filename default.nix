@@ -35,7 +35,7 @@ stdenv.mkDerivation {
     addToSearchPath GEM_PATH $out/${ruby.gemPath}
 
     export gemlibpath=$out/lib/
-    ensureDir $gemlibpath
+    mkdir -p $gemlibpath
     cp distro-package.rb $gemlibpath
     cp package-updater.rb $gemlibpath
     cp security-advisory.rb $gemlibpath
@@ -43,7 +43,7 @@ stdenv.mkDerivation {
     cp build-log.rb $gemlibpath
     cp -r migrations $gemlibpath
 
-    ensureDir $out/bin
+    mkdir -p $out/bin
     cp updatetool.rb $out/bin
     cp nixpkgs-monitor-site $out/bin
 
