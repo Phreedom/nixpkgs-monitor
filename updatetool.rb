@@ -245,6 +245,7 @@ if actions.include? :tarballs
     updaters.each do |updater|
       DB[updater.friendly_name].all.each do |row|
         pkg = DistroPackage::Nix.by_internal_name[row[:pkg_attr]]
+        next unless pkg
 
         tarballs =  [ updater.find_tarball(pkg, row[:version]) ].flatten
         tarballs.each do |tarball|
