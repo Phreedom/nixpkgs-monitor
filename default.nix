@@ -17,7 +17,7 @@ let
       patches = [ ./expose-attrs.patch ./extra-meta.patch ];
     });
 
-  updater_runtime_deps = with pkgs; [ ruby19 git patch curl bzip2 gnutar gnugrep coreutils gnused bash file ];
+  updater_runtime_deps = with pkgs; [ ruby_1_9 git patch curl bzip2 gnutar gnugrep coreutils gnused bash file ];
 
 in
 with pkgs;
@@ -55,7 +55,7 @@ stdenv.mkDerivation {
           --set RUBYOPT rubygems
 
     wrapProgram "$out/bin/nixpkgs-monitor-site" \
-          --set PATH "${ruby19}/bin:${diffutils}/bin:${which}/bin" \
+          --set PATH "${ruby_1_9}/bin:${diffutils}/bin:${which}/bin" \
           --prefix GEM_PATH : "$GEM_PATH" \
           --prefix RUBYLIB : "${rubygems}/lib:$gemlibpath" \
           --set RUBYOPT rubygems
