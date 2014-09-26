@@ -1,6 +1,7 @@
 require 'rubygems/package'
 require 'zlib'
 require 'json'
+require 'nokogiri'
 
 require 'distro-package.rb'
 
@@ -297,21 +298,30 @@ module PackageUpdater
     class SF < Updater
 
       def self.tarballs
-        unless @tarballs
-          @tarballs = Hash.new{|h, sf_project| h[sf_project] = tarballs_from_dir("http://qa.debian.org/watch/sf.php/#{sf_project}") }
+        @tarballs ||= Hash.new do |h, sf_project|
+          tarballs = Hash.new{|h,k| h[k] = Array.new }
+
+          begin
+            data = http_agent.get("http://sourceforge.net/projects/#{sf_project}/rss").body
+            Nokogiri.XML(data).xpath('rss/channel/item/title').each do |v|
+              next if v.inner_text.end_with?('.asc', '.exe', '.dmg', '.sig', '.sha1', '.patch', '.patch.gz', '.patch.bz2', '.diff', '.diff.bz2', '.xdelta')
+              (name, version) = parse_tarball_from_url(v.inner_text)
+              tarballs[name] << version if name and version
+            end
+          rescue Net::HTTPForbidden, Mechanize::ResponseCodeError
+          end
+
+          h[sf_project] = tarballs
         end
-        @tarballs
       end
 
       def self.covers?(pkg)
-        return( pkg.url =~ %r{^mirror://sourceforge/(?:project/)?([^/]+).*?/([^/]+)$} and usable_version?(pkg.version) )
+        pkg.url =~ %r{^mirror://sourceforge/(?:project/)?([^/]+).*?/([^/]+)$} and usable_version?(pkg.version)
       end
 
       def self.newest_versions_of(pkg)
         return nil unless pkg.url
-        url = pkg.url;
-        return nil unless url =~ %r{^mirror://sourceforge/(?:project/)?([^/]+).*?/([^/]+)$}
-        sf_project = $1
+        return nil unless %r{^mirror://sourceforge/(?:project/)?(?<sf_project>[^/]+).*?/([^/]+)$} =~ pkg.url
         return new_tarball_versions(pkg, tarballs[sf_project])
       end
 
