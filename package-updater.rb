@@ -440,16 +440,13 @@ module PackageUpdater
 
       def self.tarballs
         unless @tarballs
-          @tarballs = {}
-          index_gz = http_agent.get('http://hackage.haskell.org/packages/archive/00-index.tar.gz').body
+          @tarballs = Hash.new{|h,k| h[k] = Array.new }
+          index_gz = http_agent.get('https://hackage.haskell.org/packages/index.tar.gz').body
           tgz = Zlib::GzipReader.new(StringIO.new(index_gz)).read
           tar = Gem::Package::TarReader.new(StringIO.new(tgz))
           tar.each do |entry|
-            log.warn "failed to parse #{entry.full_name}" unless entry.full_name =~ %r{^([^/]+)/([^/]+)/}
-            package_name = $1
-            file_version = $2
-            @tarballs[package_name] = [] unless @tarballs[package_name]
-            @tarballs[package_name] = @tarballs[package_name] << file_version 
+            log.warn "failed to parse #{entry.full_name}" unless %r{^(?<pkg>[^/]+)/(?<ver>[^/]+)/} =~  entry.full_name
+            @tarballs[pkg] << ver
           end
           tar.close
         end
@@ -457,12 +454,12 @@ module PackageUpdater
       end
 
       def self.covers?(pkg)
-        return( pkg.url and pkg.url.start_with? 'http://hackage.haskell.org/' and usable_version?(pkg.version) )
+        return( pkg.url and pkg.url.start_with? 'mirror://hackage/' and usable_version?(pkg.version) )
       end
 
       def self.newest_versions_of(pkg)
         return nil unless pkg.url
-        if pkg.url.start_with? 'http://hackage.haskell.org/'
+        if pkg.url.start_with? 'mirror://hackage/'
           return new_tarball_versions(pkg, tarballs)
         end
       end
