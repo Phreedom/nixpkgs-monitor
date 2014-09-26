@@ -423,12 +423,11 @@ module PackageUpdater
         return nil unless pkg.url.include? 'rubygems.org/downloads/'
         (package_name, file_version) = parse_tarball_from_url(pkg.url)
         return nil unless package_name
-        vdata =  http_agent.get("http://rubygems.org/api/v1/versions/#{package_name}.xml")
-        @tarballs = {} unless @tarballs
-        vdata.search('versions/version/number').each do |v|
-          @tarballs[package_name] = [] unless @tarballs[package_name]
-          @tarballs[package_name] = @tarballs[package_name] << v.inner_text 
-        end
+
+        @tarballs ||= {}
+        vdata =  http_agent.get("http://rubygems.org/api/v1/versions/#{package_name}.json")
+        @tarballs[package_name] = JSON.parse(vdata.body).map{|v| v["number"]}
+
         return new_tarball_versions(pkg, @tarballs)
       end
 
