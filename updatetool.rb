@@ -406,7 +406,7 @@ if actions.include? :build
         if File.exist? row[:drvpath]
 
           log.warn "Builder #{builder_id} building: #{row[:drvpath]}"
-          %x(nix-store --realise #{row[:drvpath]} 2>&1)
+          %x(nix-store --realise #{row[:drvpath]} --timeout #{6*3600} 2>&1)
           status = ($? == 0 ? "ok" : "failed")
 
           log_path = row[:drvpath].sub(%r{^/nix/store/}, "")
