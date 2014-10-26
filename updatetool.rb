@@ -147,7 +147,7 @@ distros_to_update.each do |distro|
     Reports::Timestamps.done("fetch_#{distro.name.split('::').last.downcase}", "found #{distro.packages.count} packages")
   rescue Exception => e
     Reports::Timestamps.done("fetch_#{distro.name.split('::').last.downcase}", "error: #{e}")
-    raise
+    raise if distro == DistroPackage::Nix
   end
 end
 
