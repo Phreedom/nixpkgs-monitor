@@ -153,14 +153,14 @@ set :base_url, (ENV["BASE_URL"] || "http://monitor.nixos.org/")
         <div class=filteritem>
           Maintainers: <select name=mc>
             <option value=""> </option>#{
-              maintainer_stats.keys.
+              maintainer_stats.keys.sort.
                   map{ |k| "<option #{ render_selected(params[:mc] == k.to_s) }>#{k}</option>" }.
                   join
             }
           </select><br>
           Coverage: <select name=c>
             <option value=""> </option>#{
-              coverage_stats.keys.
+              coverage_stats.keys.sort.
                   map{|k| "<option #{ render_selected(params[:c] == k.to_s) }>#{k}</option>"}.
                   join
             }
