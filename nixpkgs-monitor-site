@@ -61,7 +61,7 @@ set :base_url, (ENV["BASE_URL"] || "http://monitor.nixos.org/")
     return false if pkg.branch.to_s.empty?
     branch_t = PackageUpdater::Updater.tokenize_version(pkg.branch)
     nv_t = PackageUpdater::Updater.tokenize_version(new_ver)
-    return ( nv_t[0..branch_t.size-1] == branch_t)
+    return (nv_t.nil? or branch_t.nil? or (nv_t[0..branch_t.size-1] == branch_t) )
   end
 
   def is_major_update?(pkg, new_ver)
