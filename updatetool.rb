@@ -277,9 +277,9 @@ if actions.include? :patches
     nixpkg = DistroPackage::Nix.by_internal_name[row[:pkg_attr]]
     next unless nixpkg
 
-    file_name =  File.join(DistroPackage::Nix.repository_path, nixpkg.position.rpartition(':')[0])
-    original_content = File.readlines(file_name)
-    sha256_location =  original_content.index{ |l| l.include? nixpkg.sha256 }
+    file_name = nixpkg.position && File.join(DistroPackage::Nix.repository_path, nixpkg.position.rpartition(':')[0])
+    original_content = file_name && File.readlines(file_name)
+    sha256_location = original_content && original_content.index{ |l| l.include? nixpkg.sha256 }
     unless sha256_location
       #puts "failed to find the original hash value in the file reported to contain the derivation for #{row[:pkg_attr]}. Grepping for it instead"
       file_name =  %x(grep -ir '#{nixpkg.sha256}' -rl #{File.join(DistroPackage::Nix.repository_path, 'pkgs')}).split("\n")[0]
