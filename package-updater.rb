@@ -469,22 +469,22 @@ module PackageUpdater
     # handles Python packages hosted at http://pypi.python.org/
     class Pypi < Updater
 
-      def self.tarballs
-        unless @tarballs
-          @tarballs = Hash.new{|h,path| h[path] = tarballs_from_dir("http://pypi.python.org#{path}") }
+      def self.releases
+        @releases ||= Hash.new do |h, pkgname|
+          h[pkgname] = JSON.parse(http_agent.get("http://pypi.python.org/pypi/#{pkgname}/json")
+                                            .body)["releases"].keys
         end
-        @tarballs
       end
 
       def self.covers?(pkg)
-        return( pkg.url =~ %r{^https?://pypi.python.org(/packages/source/./[^/]*/)[^/]*$} and usable_version?(pkg.version) )
+        return( pkg.url =~ %r{^https?://pypi.python.org/packages/source/./([^/]*)/[^/]*$} and
+                usable_version?(pkg.version) )
       end
 
       def self.newest_versions_of(pkg)
-        return nil unless pkg.url
-        return nil unless pkg.url =~ %r{^https?://pypi.python.org(/packages/source/./[^/]*/)[^/]*$}
-        path = $1
-        return new_tarball_versions(pkg, tarballs[path])
+        return nil unless pkg.url and
+                          %r{^https?://pypi.python.org/packages/source/./(?<pkgname>[^/]*)/[^/]*$} =~ pkg.url
+        return new_versions(pkg.version.downcase, releases[pkgname], pkg.internal_name)
       end
 
     end
