@@ -2,6 +2,9 @@
 
 let
   updater_runtime_deps = with pkgs; [ ruby_1_9 git patch curl bzip2 gnutar gnugrep coreutils gnused bash file ];
+  tame_nix = pkgs.lib.overrideDerivation pkgs.nixUnstable (a: {
+    patches = [ ./expose-attrs.patch ./extra-meta.patch ];
+  });
 
 in stdenv.mkDerivation rec {
   name = "nixpkgs-monitor-dev";
@@ -33,7 +36,7 @@ in stdenv.mkDerivation rec {
     cp nixpkgs-monitor-site $out/bin
     wrapProgram "$out/bin/updatetool.rb" \
         ${stdenv.lib.concatMapStrings (x: "--prefix PATH : ${x}/bin ") updater_runtime_deps} \
-          --prefix PATH : "${env.ruby}/bin" \
+          --prefix PATH : "${env.ruby}/bin:${tame_nix}/bin" \
           --prefix GEM_PATH : "${env}/${env.ruby.gemPath}" \
           --prefix RUBYLIB : "${env}/${env.ruby.gemPath}:$out/lib"  \
           --set RUBYOPT rubygems

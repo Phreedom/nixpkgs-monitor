@@ -24,8 +24,8 @@ index e65dc4e..8e70859 100644
 +                                      sOutputHash(globals.state->symbols.create("outputHash"));
 +
 +                        // meta.repositories special case handling
-+                        Bindings::iterator meta_raw = i->attrs->find(globals.state->sMeta);
-+                        if (meta_raw != i->attrs->end()) {
++                        Bindings::iterator meta_raw = i.attrs->find(globals.state->sMeta);
++                        if (meta_raw != i.attrs->end()) {
 +                            globals.state->forceAttrs(*meta_raw->value);
 +                            Bindings::iterator repositories = meta_raw->value->attrs->find(sRepositories);
 +                            if (repositories != meta_raw->value->attrs->end()) {
@@ -46,16 +46,16 @@ index e65dc4e..8e70859 100644
 +
 +
 +                        // src attr special case handling
-+                        Bindings::iterator src = i->attrs->find(sSrc);
-+                        if (src != i->attrs->end()) {
++                        Bindings::iterator src = i.attrs->find(sSrc);
++                        if (src != i.attrs->end()) {
 +                            globals.state->forceValue(*src->value);
 +                            if (src->value->type == tAttrs) {
 +                                Bindings::iterator urls = src->value->attrs->find(sUrls);
 +                                if (urls != src->value->attrs->end()) {
 +                                    globals.state->forceList(*urls->value);
-+                                    if (urls->value->list.length > 0) {
++                                    if (urls->value->listSize() > 0) {
 +                                        XMLAttrs attrs5;
-+                                        Value *url = urls->value->list.elems[0];
++                                        Value *url = urls->value->listElems()[0];
 +
 +                                        attrs5["name"] = "src.url";
 +                                        attrs5["type"] = "string";

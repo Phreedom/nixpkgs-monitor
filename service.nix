@@ -1,6 +1,6 @@
-{ config, pkgs, ... }:
+{ config, lib, pkgs, ... }:
 
-with pkgs.lib;
+with lib;
 
 let
 
@@ -8,7 +8,7 @@ let
 
   env_db = optionalAttrs (cfg.database != null) { DB = cfg.database; };
 
-  npmon = import ./default.nix {};
+  npmon = import ./default.nix { inherit pkgs; };
 
 in
 
