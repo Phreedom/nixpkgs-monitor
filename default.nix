@@ -1,7 +1,7 @@
 { pkgs ? (import <nixpkgs> {}), stdenv ? pkgs.stdenv }:
 
 let
-  updater_runtime_deps = with pkgs; [ ruby_1_9 git patch curl bzip2 gnutar gnugrep coreutils gnused bash file ];
+  updater_runtime_deps = with pkgs; [ ruby_1_9 git patch curl bzip2 gzip gnutar gnugrep coreutils gnused bash file ];
   tame_nix = pkgs.lib.overrideDerivation pkgs.nixUnstable (a: {
     patches = [ ./expose-attrs.patch ./extra-meta.patch ];
   });

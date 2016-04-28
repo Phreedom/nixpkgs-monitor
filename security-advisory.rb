@@ -32,22 +32,19 @@ module SecurityAdvisory
     end
 
 
-    def self.fetch_updates
-      puts %x(curl -O http://static.nvd.nist.gov/feeds/xml/cve/nvdcve-2.0-2012.xml -z nvdcve-2.0-2012.xml)
-      puts %x(curl -O http://static.nvd.nist.gov/feeds/xml/cve/nvdcve-2.0-2013.xml -z nvdcve-2.0-2013.xml)
-      puts %x(curl -O http://static.nvd.nist.gov/feeds/xml/cve/nvdcve-2.0-2014.xml -z nvdcve-2.0-2014.xml)
-      puts %x(curl -O http://static.nvd.nist.gov/feeds/xml/cve/nvdcve-2.0-modified.xml -z nvdcve-2.0-modified.xml)
+    def self.update_names
+      ["2012", "2013", "2014", "2015", "2016", "Modified", "Recent"]
     end
 
+    def self.fetch_updates
+      update_names.each do |name|
+          puts %x(curl -O https://nvd.nist.gov/feeds/xml/cve/nvdcve-2.0-#{name}.xml.gz)
+          puts %x(zcat nvdcve-2.0-#{name}.xml.gz > nvdcve-2.0-#{name}.xml)
+      end
+    end
 
     def self.list
-      unless @list
-        @list = load_from('nvdcve-2.0-2012.xml') +
-                load_from('nvdcve-2.0-2013.xml') +
-                load_from('nvdcve-2.0-2014.xml') +
-                load_from('nvdcve-2.0-modified.xml')
-      end
-      @list
+      @list ||= update_names.map {|n| load_from("nvdcve-2.0-#{n}.xml")}.reduce(:+)
     end
 
 
