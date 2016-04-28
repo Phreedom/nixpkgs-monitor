@@ -262,10 +262,10 @@ module DistroPackage
     def self.generate_list
       gentoo_list = {}
 
-      categories_json = http_agent.get('http://euscan.iksaif.net/api/1.0/categories.json').body
+      categories_json = http_agent.get('http://euscan.gentooexperimental.org/api/1.0/categories.json').body
       JSON.parse(categories_json)["categories"].each do |cat|
         puts cat["category"]
-        packages_json = http_agent.get("http://euscan.iksaif.net/api/1.0/packages/by-category/#{cat["category"]}.json").body
+        packages_json = http_agent.get("http://euscan.gentooexperimental.org/api/1.0/packages/by-category/#{cat["category"]}.json").body
         JSON.parse(packages_json)["packages"].each do |pkg|
           name = pkg["name"]
           gentoo_list[name] = Gentoo.new(cat["category"] + '/' + name, name) unless gentoo_list[name]
