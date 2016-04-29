@@ -22,18 +22,10 @@ in stdenv.mkDerivation rec {
   buildInputs = [ pkgs.makeWrapper env.ruby pkgs.bundler ];
 
   installPhase = ''
-    addToSearchPath GEM_PATH $out/${env.ruby.gemPath}
-    export gemlibpath=$out/lib/
-    mkdir -p $gemlibpath
-    cp distro-package.rb $gemlibpath
-    cp package-updater.rb $gemlibpath
-    cp security-advisory.rb $gemlibpath
-    cp reports.rb $gemlibpath
-    cp build-log.rb $gemlibpath
-    cp -r migrations $gemlibpath
-    mkdir -p $out/bin
-    cp updatetool.rb $out/bin
-    cp nixpkgs-monitor-site $out/bin
+    mkdir -p $out
+    cp -r lib $out
+    cp -r bin $out
+
     wrapProgram "$out/bin/updatetool.rb" \
         ${stdenv.lib.concatMapStrings (x: "--prefix PATH : ${x}/bin ") updater_runtime_deps} \
           --prefix PATH : "${env.ruby}/bin:${tame_nix}/bin" \
