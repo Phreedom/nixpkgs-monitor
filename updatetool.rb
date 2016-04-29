@@ -517,21 +517,42 @@ if actions.include? :cve_check
   end
   log.debug "token selectivity \n #{sorted_hash_to_s(selectivity)} \n\n"
 
-  false_positive_impact = {}
-  tokens.keys.each{ |t| false_positive_impact[t] = tokens[t] * selectivity[t] }
+  false_positive_impact = tokens.keys.
+                                 each_with_object(Hash.new()) { |t, impact|
+                                     impact[t] = tokens[t] * selectivity[t]
+                                 }
   log.debug "false positive impact \n #{sorted_hash_to_s(false_positive_impact)} \n\n"
 
-  product_blacklist = Set.new [ '.net_framework', 'iphone_os', 'nx-os',
-    'unified_computing_system_infrastructure_and_unified_computing_system_software',
-    'bouncycastle:legion-of-the-bouncy-castle-c%23-crytography-api', # should be renamed instead of blocked
-  ]
+  common_prefixes = DistroPackage::Nix.list.keys.
+      map{ |name| ((%r{^(?<prefix>[^-_]*)[-_]} =~ name) and (prefix.length >2)) ? prefix : nil }.
+      reject(&:nil?).
+      each_with_object(Hash.new(0)){ |prefix, counts| counts[prefix] += 1 }.
+      reject{ |prefix, count| count < 30 }
+  log.debug "common name prefixes\n #{common_prefixes.inspect}\n"
+
+  def normalize_name(name, common_prefixes)
+    prefix = common_prefixes.find{ |prefix| name.start_with?(prefix+"-", prefix+"_") }
+    (prefix ? name.sub(prefix, '') : name).downcase.gsub(%r{[^a-z]}, '')
+  end
+
+  def normalize_attrpath(attrpath)
+    ((%r{(?<last>[^.]*)$} =~ attrpath) ? last : attrpath).downcase.gsub(%r{[^a-z]}, '')
+  end
+
+  def sparse_contains(str, substr)
+    p = -1
+    substr.chars.all? {|c| p = str.index(c, p+1) }
+  end
 
   DB.transaction do
 
   DB[:cve_match].delete
 
+  # if a nix package is named like this, match it only against a cve product with an identical name
+  # this prevents eg ruby nix package from being matched to ruby on rails cve product
+  exact_name_match = ['perl', 'python', 'ruby']
+
   products.each_pair do |product, versions|
-    next if product_blacklist.include? product
     tk = product.scan(/(?:[a-zA-Z]+)|(?:\d+)/).select do |token|
       token.size != 1 and not(['the','and','in','on','of','for'].include? token)
     end
@@ -550,15 +571,15 @@ if actions.include? :cve_check
       if version =~ /^\d+\.\d+\.\d+\.\d+/ or version =~ /^\d+\.\d+\.\d+/ or version =~ /^\d+\.\d+/ or version =~ /^\d+/ 
         v = $&
         pkgs.each do |pkg|
-          next if product == 'ack' and pkg.name != 'ack' and pkg.internal_name.start_with?( 'perlPackages.', 'python', 'emacs')
-          next if product == 'perl' and pkg.internal_name.start_with? 'perlPackages.'
-          next if product == 'python' and (pkg.internal_name =~ /^python\d\dPackages\./ or pkg.internal_name.start_with? 'pythonDocs.')
+          next if exact_name_match.include?(pkg.name) and not exact_name_match.include?(product)
           if pkg.version =~ /^\d+\.\d+\.\d+\.\d+/ or pkg.version =~ /^\d+\.\d+\.\d+/ or pkg.version =~ /^\d+\.\d+/ or pkg.version =~ /^\d+/ 
             v2 = $&
 
           #if (pkg.version == v) or (pkg.version.start_with? v and not( ('0'..'9').include? pkg.version[v.size]))
-            if v == v2
-              fullname = "#{product}:#{version}"
+            fullname = "#{product}:#{version}"
+            if (v == v2) and (
+                   sparse_contains(product, normalize_attrpath(pkg.internal_name)) or
+                   sparse_contains(product, normalize_name(pkg.name, common_prefixes.keys)))
               product_to_cve[fullname].each do |cve|
                 DB[:cve_match] << {
                   :pkg_attr => pkg.internal_name,
@@ -568,6 +589,8 @@ if actions.include? :cve_check
                 }
               end
               log.warn "match #{product_to_cve[fullname].inspect}: #{product}:#{version} = #{pkg.internal_name}/#{pkg.name}:#{pkg.version}"
+            elsif v == v2
+                log.debug "weak match #{product_to_cve[fullname].inspect}: #{product}:#{version} = #{pkg.internal_name}/#{pkg.name}:#{pkg.version}"
             end
           end
         end
