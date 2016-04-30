@@ -1,5 +1,6 @@
 require 'nokogiri'
 require 'distro-package'
+require 'uri'
 
 module SecurityAdvisory
 
@@ -55,7 +56,7 @@ module SecurityAdvisory
 
     def self.parse_package(package)
       return nil unless %r{^cpe:/.:(?<supplier>[^:]*):(?<product>[^:]*):(?<version>[^:]*)} =~ package
-      return [ supplier, product, version ]
+      return [ URI.unescape(supplier), URI.unescape(product), URI.unescape(version) ]
     end
 
   end
