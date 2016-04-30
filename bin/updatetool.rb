@@ -552,6 +552,10 @@ if actions.include? :cve_check
   # this prevents eg ruby nix package from being matched to ruby on rails cve product
   exact_name_match = ['perl', 'python', 'ruby']
 
+  # match whole versions for these products
+  # use sparingly for packages that produce too many false positives due to version suffixes
+  exact_version_match = ['openssl']
+
   products.each_pair do |product, versions|
     tk = product.scan(/(?:[a-zA-Z]+)|(?:\d+)/).select do |token|
       token.size != 1 and not(['the','and','in','on','of','for'].include? token)
@@ -568,12 +572,15 @@ if actions.include? :cve_check
       end.to_set
 
     versions.each do |version|
-      if version =~ /^\d+\.\d+\.\d+\.\d+/ or version =~ /^\d+\.\d+\.\d+/ or version =~ /^\d+\.\d+/ or version =~ /^\d+/ 
-        v = $&
+        version =~ /^\d+\.\d+\.\d+\.\d+/ or version =~ /^\d+\.\d+\.\d+/ or version =~ /^\d+\.\d+/ or version =~ /^\d+/ 
+        v = exact_version_match.include?(product) ? version.downcase : $&
+        next unless v
+
         pkgs.each do |pkg|
-          next if exact_name_match.include?(pkg.name) and not exact_name_match.include?(product)
-          if pkg.version =~ /^\d+\.\d+\.\d+\.\d+/ or pkg.version =~ /^\d+\.\d+\.\d+/ or pkg.version =~ /^\d+\.\d+/ or pkg.version =~ /^\d+/ 
-            v2 = $&
+            next if exact_name_match.include?(pkg.name) and not exact_name_match.include?(product)
+            pkg.version =~ /^\d+\.\d+\.\d+\.\d+/ or pkg.version =~ /^\d+\.\d+\.\d+/ or pkg.version =~ /^\d+\.\d+/ or pkg.version =~ /^\d+/ 
+            v2 = exact_version_match.include?(product) ? pkg.version.downcase : $&
+            next unless v2
 
           #if (pkg.version == v) or (pkg.version.start_with? v and not( ('0'..'9').include? pkg.version[v.size]))
             fullname = "#{product}:#{version}"
@@ -592,9 +599,7 @@ if actions.include? :cve_check
             elsif v == v2
                 log.debug "weak match #{product_to_cve[fullname].inspect}: #{product}:#{version} = #{pkg.internal_name}/#{pkg.name}:#{pkg.version}"
             end
-          end
         end
-      end
     end
   end
 
