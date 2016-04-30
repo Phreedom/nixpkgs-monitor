@@ -653,15 +653,19 @@ get '/packagedetails.js' do
 <<DETAILS
 function showPackageDetails(obj) {
   var elem = document.getElementById(obj.dataset.target);
-  elem.innerHTML = "querying...";
-  var xmlhttp = new XMLHttpRequest();
-  xmlhttp.onreadystatechange = function() {
-    if (xmlhttp.readyState==4 && xmlhttp.status==200) {
-      elem.innerHTML=xmlhttp.responseText;
+  if (elem.innerHTML == "") {
+    elem.innerHTML = "querying...";
+    var xmlhttp = new XMLHttpRequest();
+    xmlhttp.onreadystatechange = function() {
+      if (xmlhttp.readyState==4 && xmlhttp.status==200) {
+        elem.innerHTML=xmlhttp.responseText;
+      }
     }
+    xmlhttp.open("GET","/pd?p=" + obj.dataset.target,true);
+    xmlhttp.send();
+  } else {
+    elem.innerHTML = "";
   }
-  xmlhttp.open("GET","/pd?p=" + obj.dataset.target,true);
-  xmlhttp.send();
   return true;
 }
 
