@@ -33,7 +33,7 @@ module SecurityAdvisory
 
 
     def self.update_names
-      ["2012", "2013", "2014", "2015", "2016", "Modified", "Recent"]
+      (-4..0).map { |offs| (Time.now.utc.year + offs).to_s } + ["Modified", "Recent"]
     end
 
     def self.fetch_updates
@@ -59,6 +59,7 @@ module SecurityAdvisory
     end
 
   end
+
 
   class GLSA
     attr_reader :id, :packages
