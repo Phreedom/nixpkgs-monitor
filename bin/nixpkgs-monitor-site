@@ -394,7 +394,7 @@ get '/patch' do
   %{
 From: #{maintainers_with_email.select{|m| params[:m] and m.downcase.include? (params[:m].downcase)}.first ||
         "Nixpkgs Monitor <none@none>" }
-Subject: #{params[:p]}: update from #{DistroPackage::Nix.by_internal_name[params[:p]].version} to #{params[:v]}#{
+Subject: #{params[:p]}: #{DistroPackage::Nix.by_internal_name[params[:p]].version} -> #{params[:v]}#{
   vulnerable.has_key?(params[:p]) ? ", potentially fixes #{vulnerable[params[:p]].values.map{|s| s.to_a}.flatten.join(', ')}": ""
 }
 
