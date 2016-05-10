@@ -4,13 +4,11 @@ require 'optparse'
 require 'mechanize'
 require 'logger'
 require 'distro-package'
-require 'package-updater'
+require 'package_updaters'
 require 'security-advisory'
 require 'reports'
 require 'sequel'
 require 'set'
-
-include PackageUpdater
 
 
 STDOUT.sync = true;
@@ -34,7 +32,7 @@ DB = (ENV["DB"] && Sequel.connect(ENV["DB"])) || Sequel.sqlite('./db.sqlite')
 
 distros_to_update = Set.new
 
-updaters = Updaters
+updaters = PackageUpdaters::Updaters
 
 OptionParser.new do |o|
   o.on("-v", "Verbose output. Can be specified multiple times") do
@@ -66,7 +64,7 @@ OptionParser.new do |o|
   end
 
   o.on("--updater UPDATER", "Check for updates using only UPDATER. Accepts partial names.") do |uname|
-    updaters = Updaters.select { |u| u.friendly_name.to_s.downcase.include? uname.downcase }
+    updaters = PackageUpdaters::Updaters.select { |u| u.friendly_name.to_s.include? uname.downcase }
   end
 
   o.on("--check-updates", "list NixPkgs packages which have updates available") do
@@ -159,7 +157,7 @@ if actions.include? :coverage
 
     DistroPackage::Nix.packages.each do |pkg|
       DB[:estimated_coverage] << { :pkg_attr => pkg.internal_name,
-                                   :coverage => Updaters.count{ |updater| updater.covers?(pkg) } }
+                                   :coverage => PackageUpdaters::Updaters.count{ |updater| updater.covers?(pkg) } }
     end
 
     Reports::Timestamps.done(:coverage)
@@ -177,6 +175,7 @@ if actions.include? :check_updates
     begin
       DB.transaction do
         DB[updater.friendly_name].delete
+        log.warn "running #{updater.friendly_name}"
 
         pkgs_to_check.each do |pkg|
           new_ver = updater.newest_versions_of(pkg).to_a.flatten.reject(&:nil?)
@@ -444,7 +443,7 @@ if actions.include? :check_pkg_version_match
     DB[:version_mismatch].delete
 
     DistroPackage::Nix.packages.
-      reject{|pkg| Updater.versions_match?(pkg)}.
+      reject{|pkg| PackageUpdaters::Base.versions_match?(pkg)}.
       each{|pkg| version_mismatch.pkg(pkg.internal_name)}
   end
 

@@ -4,7 +4,7 @@ require 'sinatra'
 require 'haml'
 require 'sequel'
 require 'distro-package'
-require 'package-updater'
+require 'package_updaters'
 require 'build-log'
 require 'reports'
 require 'cgi'
@@ -15,7 +15,7 @@ require 'uri'
 DB = (ENV["DB"] && Sequel.connect(ENV["DB"])) || Sequel.sqlite('./db.sqlite')
 
 set :base_url, (ENV["BASE_URL"] || "http://monitor.nixos.org/")
-
+set :server, 'webrick'
 
   def cache
     @@cache ||= {}
@@ -46,7 +46,7 @@ set :base_url, (ENV["BASE_URL"] || "http://monitor.nixos.org/")
   end
 
   def outdated
-    @@outdated ||= PackageUpdater::Updaters.each.
+    @@outdated ||= PackageUpdaters::Updaters.each.
         with_object(Hash.new{|h,k| h[k] = Hash.new{|h,k| h[k] = Array.new } }) do |updater, data|
           DB[updater.friendly_name].all.each do |row|
             pkg = DistroPackage::Nix.by_internal_name[row[:pkg_attr]]
@@ -59,15 +59,15 @@ set :base_url, (ENV["BASE_URL"] || "http://monitor.nixos.org/")
 
   def is_branch_update?(pkg, new_ver)
     return false if pkg.branch.to_s.empty?
-    branch_t = PackageUpdater::Updater.tokenize_version(pkg.branch)
-    nv_t = PackageUpdater::Updater.tokenize_version(new_ver)
+    branch_t = PackageUpdaters::Base.tokenize_version(pkg.branch)
+    nv_t = PackageUpdaters::Base.tokenize_version(new_ver)
     return (nv_t.nil? or branch_t.nil? or (nv_t[0..branch_t.size-1] == branch_t) )
   end
 
   def is_major_update?(pkg, new_ver)
     return not(is_branch_update?(pkg, new_ver)) unless pkg.branch.to_s.empty?
-    v_t = PackageUpdater::Updater.tokenize_version(pkg.version)
-    nv_t = PackageUpdater::Updater.tokenize_version(new_ver)
+    v_t = PackageUpdaters::Base.tokenize_version(pkg.version)
+    nv_t = PackageUpdaters::Base.tokenize_version(new_ver)
     return (
       not(v_t) or not(nv_t) or (v_t[0] != nv_t[0]) or
       (v_t[2]>=0 and (v_t[1] != nv_t[1]))
