@@ -31,9 +31,8 @@ module PackageUpdaters
       end
 
       def self.newest_versions_of(pkg)
-        return nil unless pkg.url
         return nil unless %r{^mirror://sourceforge/(?:project/)?(?<sf_project>[^/]+).*?/([^/]+)$} =~ pkg.url
-        return new_tarball_versions(pkg, tarballs[sf_project])
+        new_tarball_versions(pkg, tarballs[sf_project])
       end
 
     end

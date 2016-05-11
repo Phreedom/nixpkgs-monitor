@@ -6,12 +6,12 @@ module PackageUpdaters
     # Generic git-based updater. Discovers new versions using git repository tags.
     class Base < PackageUpdaters::Base
 
-      def self.ls_remote(repo)
-        @repo_cache = {} unless @repo_cache
-        unless @repo_cache[repo]
-          @repo_cache[repo] = %x(GIT_ASKPASS="echo" SSH_ASKPASS= git ls-remote #{repo}).force_encoding("iso-8859-1").split("\n")
+      def self.ls_remote
+        @repo_cache ||= Hash.new do |repo_cache, repo|
+          repo_cache[repo] = %x(GIT_ASKPASS="echo" SSH_ASKPASS= git ls-remote #{repo})
+                                 .force_encoding("iso-8859-1")
+                                 .split("\n")
         end
-        @repo_cache[repo]
       end
 
       # Tries to handle the tag as a tarball name.
@@ -30,8 +30,8 @@ module PackageUpdaters
       end
 
       def self.repo_contents_to_tags(repo_contents)
-        tags = repo_contents.select{ |s| s.include? "refs/tags/" }
-        return tags.map{ |tag| tag_to_version(tag) }
+        repo_contents.select{ |s| s.include? "refs/tags/" }
+                     .map{ |tag| tag_to_version(tag) }
       end
 
     end
@@ -45,14 +45,14 @@ module PackageUpdaters
     class FetchGit < Base
 
       def self.covers?(pkg)
-        return( pkg.url and not(pkg.revision.to_s.empty?) and pkg.url.include? "git" )
+        pkg.url and not(pkg.revision.to_s.empty?) and pkg.url.include? "git"
       end
 
 
       def self.newest_version_of(pkg)
         return nil unless covers?(pkg)
 
-        repo_contents = ls_remote(pkg.url).select{|s| s.include?("refs/tags") or s.include?("refs/heads/master") }
+        repo_contents = ls_remote[pkg.url].select{|s| s.include?("refs/tags") or s.include?("refs/heads/master") }
         tag_line = repo_contents.index{|line| line.include? pkg.revision }
 
         log.debug "for #{pkg.revision} found #{tag_line}"
@@ -94,15 +94,15 @@ module PackageUpdaters
     class GitHub < Base
 
       def self.covers?(pkg)
-        return( pkg.url and pkg.revision.to_s.empty? and pkg.url  =~ %r{^https?://github.com/} and usable_version?(pkg.version) )
+        pkg.revision.to_s.empty? and pkg.url  =~ %r{^https?://github.com/} and usable_version?(pkg.version)
       end
 
       def self.newest_version_of(pkg)
         return nil unless covers?(pkg)
         return nil unless %r{^https?://github.com/(?:downloads/)?(?<owner>[^/]*)/(?<repo>[^/]*)/} =~ pkg.url
 
-        available_versions = repo_contents_to_tags( ls_remote( "https://github.com/#{owner}/#{repo}.git" ) )
-        return new_versions(pkg.version.downcase, available_versions, pkg.internal_name)
+        available_versions = repo_contents_to_tags( ls_remote["https://github.com/#{owner}/#{repo}.git"] )
+        new_versions(pkg.version.downcase, available_versions, pkg.internal_name)
       end
 
     end
@@ -113,14 +113,14 @@ module PackageUpdaters
 
       # if meta.repository.git is the same as src.url, defer to FetchGit updater
       def self.covers?(pkg)
-        return( not(pkg.repository_git.to_s.empty?) and (pkg.repository_git != pkg.url) and usable_version?(pkg.version) )
+        not(pkg.repository_git.to_s.empty?) and (pkg.repository_git != pkg.url) and usable_version?(pkg.version)
       end
 
       def self.newest_version_of(pkg)
         return nil unless covers?(pkg)
 
-        available_versions = repo_contents_to_tags( ls_remote( pkg.repository_git ) )
-        return new_versions(pkg.version.downcase, available_versions, pkg.internal_name)
+        available_versions = repo_contents_to_tags( ls_remote[pkg.repository_git] )
+        new_versions(pkg.version.downcase, available_versions, pkg.internal_name)
       end
 
     end

@@ -12,7 +12,7 @@ module PackageUpdaters
       end
 
       def self.covers?(pkg)
-        return( pkg.url and pkg.url =~ %r{^mirror://gnome(/sources/[^/]*/)[^/]*/[^/]*$} and usable_version?(pkg.version) )
+        pkg.url =~ %r{^mirror://gnome(/sources/[^/]*/)[^/]*/[^/]*$} and usable_version?(pkg.version)
       end
 
       def self.find_tarball(pkg, version)
@@ -26,10 +26,8 @@ module PackageUpdaters
       end
 
       def self.newest_versions_of(pkg)
-        return nil unless pkg.url
-        return nil unless pkg.url =~ %r{^mirror://gnome(/sources/[^/]*/)[^/]*/[^/]*$}
-        path = $1
-        return new_tarball_versions(pkg, tarballs[path][2])
+        return nil unless %r{^mirror://gnome(?<path>/sources/[^/]*/)[^/]*/[^/]*$} =~ pkg.url
+        new_tarball_versions(pkg, tarballs[path][2])
       end
 
     end

@@ -8,14 +8,14 @@ module PackageUpdaters
     class Arch < PackageUpdaters::Base
 
       def self.covers?(pkg)
-        return ( DistroPackage::Arch.list[pkg.name.downcase] and usable_version?(pkg.version) )
+        DistroPackage::Arch.list[pkg.name.downcase] and usable_version?(pkg.version)
       end
 
       def self.newest_version_of(pkg)
+        return nil unless covers?(pkg)
         arch_pkg = DistroPackage::Arch.list[pkg.name.downcase]
-        return nil unless arch_pkg
-        return nil unless usable_version?(arch_pkg.version) and usable_version?(pkg.version)
-        return ( is_newer?(arch_pkg.version, pkg.version) ? arch_pkg.version : nil)
+        return nil unless usable_version?(arch_pkg.version)
+        ( is_newer?(arch_pkg.version, pkg.version) ? arch_pkg.version : nil )
       end
 
     end
@@ -25,14 +25,14 @@ module PackageUpdaters
     class AUR < PackageUpdaters::Base
 
       def self.covers?(pkg)
-        return ( DistroPackage::AUR.list[pkg.name.downcase] and usable_version?(pkg.version) )
+        DistroPackage::AUR.list[pkg.name.downcase] and usable_version?(pkg.version)
       end
 
       def self.newest_version_of(pkg)
+        return nil unless covers?(pkg)
         arch_pkg = DistroPackage::AUR.list[pkg.name.downcase]
-        return nil unless arch_pkg
-        return nil unless usable_version?(arch_pkg.version) and usable_version?(pkg.version)
-        return ( is_newer?(arch_pkg.version, pkg.version) ? arch_pkg.version : nil)
+        return nil unless usable_version?(arch_pkg.version)
+        ( is_newer?(arch_pkg.version, pkg.version) ? arch_pkg.version : nil )
       end
 
     end
@@ -42,14 +42,14 @@ module PackageUpdaters
     class Debian < PackageUpdaters::Base
 
       def self.covers?(pkg)
-        return ( DistroPackage::Debian.match_nixpkg(pkg) and usable_version?(pkg.version) )
+        DistroPackage::Debian.match_nixpkg(pkg) and usable_version?(pkg.version)
       end
 
       def self.newest_version_of(pkg)
+        return nil unless covers?(pkg)
         deb_pkg = DistroPackage::Debian.match_nixpkg(pkg)
-        return nil unless deb_pkg
-        return nil unless usable_version?(deb_pkg.version) and usable_version?(pkg.version)
-        return ( is_newer?(deb_pkg.version, pkg.version) ? deb_pkg.version : nil)
+        return nil unless usable_version?(deb_pkg.version)
+        ( is_newer?(deb_pkg.version, pkg.version) ? deb_pkg.version : nil )
       end
 
     end
@@ -60,16 +60,15 @@ module PackageUpdaters
     class Gentoo < PackageUpdaters::Base
 
       def self.covers?(pkg)
-        return ( DistroPackage::Gentoo.match_nixpkg(pkg) and usable_version?(pkg.version) and
-                 not Repository::CPAN.covers?(pkg) and not Repository::Hackage.covers?(pkg) )
+        DistroPackage::Gentoo.match_nixpkg(pkg) and usable_version?(pkg.version) and
+        not Repository::CPAN.covers?(pkg) and not Repository::Hackage.covers?(pkg)
       end
 
       def self.newest_version_of(pkg)
         return nil unless covers?(pkg)
         gentoo_pkg = DistroPackage::Gentoo.match_nixpkg(pkg)
-        return nil unless gentoo_pkg
-        return nil unless usable_version?(gentoo_pkg.version) and usable_version?(pkg.version)
-        return ( is_newer?(gentoo_pkg.version, pkg.version) ? gentoo_pkg.version : nil)
+        return nil unless usable_version?(gentoo_pkg.version)
+        ( is_newer?(gentoo_pkg.version, pkg.version) ? gentoo_pkg.version : nil )
       end
 
     end

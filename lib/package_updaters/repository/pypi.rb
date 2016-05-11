@@ -15,14 +15,12 @@ module PackageUpdaters
       end
 
       def self.covers?(pkg)
-        return( pkg.url =~ %r{^https?://pypi.python.org/packages/source/./([^/]*)/[^/]*$} and
-                usable_version?(pkg.version) )
+        pkg.url =~ %r{^https?://pypi.python.org/packages/source/./([^/]*)/[^/]*$} and usable_version?(pkg.version)
       end
 
       def self.newest_versions_of(pkg)
-        return nil unless pkg.url and
-                          %r{^https?://pypi.python.org/packages/source/./(?<pkgname>[^/]*)/[^/]*$} =~ pkg.url
-        return new_versions(pkg.version.downcase, releases[pkgname], pkg.internal_name)
+        return nil unless %r{^https?://pypi.python.org/packages/source/./(?<pkgname>[^/]*)/[^/]*$} =~ pkg.url
+        new_versions(pkg.version.downcase, releases[pkgname], pkg.internal_name)
       end
 
     end

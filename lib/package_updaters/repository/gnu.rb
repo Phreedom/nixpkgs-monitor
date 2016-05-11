@@ -11,14 +11,12 @@ module PackageUpdaters
       end
 
       def self.covers?(pkg)
-        return( pkg.url and pkg.url =~ %r{^mirror://gnu(/[^/]*)/[^/]*$} and usable_version?(pkg.version) )
+        pkg.url =~ %r{^mirror://gnu(/[^/]*)/[^/]*$} and usable_version?(pkg.version)
       end
 
       def self.newest_versions_of(pkg)
-        return nil unless pkg.url
-        return nil unless pkg.url =~ %r{^mirror://gnu(/[^/]*)/[^/]*$}
-        path = $1
-        return new_tarball_versions(pkg, tarballs[path])
+        return nil unless %r{^mirror://gnu(?<path>/[^/]*)/[^/]*$} =~ pkg.url
+        new_tarball_versions(pkg, tarballs[path])
       end
 
     end

@@ -68,7 +68,7 @@ module PackageUpdaters
 
     # Returns true if the version format can be parsed and compared against another
     def self.usable_version?(version)
-      return (tokenize_version(version) != nil)
+      !tokenize_version(version).nil?
     end
 
 
@@ -173,7 +173,7 @@ module PackageUpdaters
       vlist = tarballs[package_name.downcase]
       return nil unless vlist
 
-      return new_versions(pkg.version.downcase, vlist, package_name)
+      new_versions(pkg.version.downcase, vlist, package_name)
     end
 
 

@@ -35,7 +35,6 @@ module PackageUpdaters
               end
             end
           end
-          log.debug @tarballs.inspect
         end
         @tarballs
       end
@@ -53,10 +52,8 @@ module PackageUpdaters
       end
 
       def self.newest_versions_of(pkg)
-        return nil unless pkg.url
-        if pkg.url.start_with? 'mirror://cpan/'
-          return new_tarball_versions(pkg, tarballs)
-        end
+        return nil unless covers?(pkg)
+        return new_tarball_versions(pkg, tarballs)
       end
 
     end

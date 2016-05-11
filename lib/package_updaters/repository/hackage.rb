@@ -24,14 +24,12 @@ module PackageUpdaters
       end
 
       def self.covers?(pkg)
-        return( pkg.url and pkg.url.start_with? 'mirror://hackage/' and usable_version?(pkg.version) )
+        pkg.url and pkg.url.start_with? 'mirror://hackage/' and usable_version?(pkg.version)
       end
 
       def self.newest_versions_of(pkg)
-        return nil unless pkg.url
-        if pkg.url.start_with? 'mirror://hackage/'
-          return new_tarball_versions(pkg, tarballs)
-        end
+        return nil unless covers?(pkg)
+        new_tarball_versions(pkg, tarballs)
       end
 
     end
