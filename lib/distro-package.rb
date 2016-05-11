@@ -112,21 +112,6 @@ module DistroPackage
     # FIXME: support multi-output PKGBUILDs
     def self.parse_pkgbuild(entry, path)
       dont_expand = [ 'pidgin' ]
-      override = {
-        'lzo2'              => 'lzo',
-        'grep'          => 'gnugrep',
-        'make'         => 'gnumake',
-        'gnuplot '      => 'gnuplot',
-        'tar'            => 'gnutar',
-        'grep'           => 'gnugrep',
-        'sed'            => 'gnused',
-        'tidyhtml'      => 'html-tidy',
-        'apache'        => 'apache-httpd',
-        'bzr'           => 'bazaar',
-        'libmp4v2'      => 'mp4v2',
-        '"gummiboot"'   => 'gummiboot',
-        'lm_sensors'    => 'lm-sensors',
-      }
 
       pkgbuild = File.read(path, :encoding => 'ISO-8859-1') 
       pkg_name = (pkgbuild =~ /pkgname=(.*)/ ? $1.strip : nil)
@@ -141,20 +126,6 @@ module DistroPackage
         puts "skipping #{entry}: unsupported multi-package PKGBUILD"
         return nil
       end
-      pkg_name = override[pkg_name] if override[pkg_name]
-
-      pkg_name = $1 if pkg_name =~ /xorg-(.*)/
-      pkg_name = $1 if pkg_name =~ /kdeedu-(.*)/
-      pkg_name = $1 if pkg_name =~ /kdemultimedia-(.*)/
-      pkg_name = $1 if pkg_name =~ /kdeutils-(.*)/
-      pkg_name = $1 if pkg_name =~ /kdegames-(.*)/
-      pkg_name = $1 if pkg_name =~ /kdebindings-(.*)/
-      pkg_name = $1 if pkg_name =~ /kdegraphics-(.*)/
-      pkg_name = $1 if pkg_name =~ /kdeaccessibility-(.*)/
-
-      pkg_name = "aspell-dict-#{$1}" if pkg_name =~ /aspell-(.*)/
-      pkg_name = "haskell-#{$1}-ghc7.6.3" if pkg_name =~ /haskell-(.*)/
-      pkg_name = "ktp-#{$1}" if pkg_name =~ /telepathy-kde-(.*)/
 
       url = %x(bash -c 'source #{path} && echo $source').split("\n").first
       url.strip! if url
@@ -175,7 +146,7 @@ module DistroPackage
       puts %x(cd packages && git pull --rebase)
       puts %x(git clone git://projects.archlinux.org/svntogit/community.git)
       puts %x(cd community && git pull --rebase)
-      
+
       puts "Scanning Arch Core, Extra (packages.git) repositories..."
       Dir.entries("packages").each do |entry|
         next if entry == '.' or entry == '..'
@@ -282,22 +253,6 @@ module DistroPackage
       end
 
       serialize_list(gentoo_list.values)
-    end
-
-
-    def self.match_nixpkg(pkg)
-      pkgname = pkg.name.downcase
-      match = list[pkgname]
-      return match if match
-      match = list[pkgname.gsub(/^ruby-/,"")]
-      return match if match
-      match = list[pkgname.gsub(/^python-/,"")]
-      return match if match
-      match = list[pkgname.gsub(/^perl-/,"")]
-      return match if match
-      match = list[pkgname.gsub(/^haskell-(.*)-ghc\d+\.\d+\.\d+$/,'\1')]
-      return match if match
-      return nil
     end
 
   end
@@ -483,7 +438,6 @@ module DistroPackage
       result = @version.sub(/^\d:/,"").sub(/-\d$/,"").sub(/\+dfsg.*$/,"")
     end
 
-
     def self.generate_list
       deb_list = {}
 
@@ -503,36 +457,6 @@ module DistroPackage
       end
 
       serialize_list(deb_list.values)
-    end
-
-
-    def self.match_nixpkg(pkg)
-      pkgname = pkg.name.downcase
-      match = list[pkgname]
-      return match if match
-#       match = list[pkg.name.gsub(/^ruby-/,"")]
-#       return match if match
-      match = list[pkgname.gsub(/^python-/,"")]
-      return match if match
-      match = list[pkgname.gsub(/^perl-(.*)$/,'lib\1-perl')]
-      return match if match
-      match = list[pkgname.gsub(/^(haskell-.*)-ghc\d+\.\d+\.\d+$/,'\1')]
-      return match if match
-      match = list[pkgname.gsub(/^xf86-(.*)$/,'xserver-xorg-\1')]
-      return match if match
-      match = list[pkgname+"1"]
-      return match if match
-      match = list[pkgname+"2"]
-      return match if match
-      match = list[pkgname+"3"]
-      return match if match
-      match = list[pkgname+"4"]
-      return match if match
-      match = list[pkgname+"5"]
-      return match if match
-      match = list[pkgname+"6"]
-      return match if match
-      return nil
     end
 
   end

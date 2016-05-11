@@ -4,52 +4,73 @@ require 'package_updaters/base'
 module PackageUpdaters
   module Distro
 
-    # checks package versions against Arch Core, Community and Extra repositories
-    class Arch < PackageUpdaters::Base
+    class Base < PackageUpdaters::Base
 
       def self.covers?(pkg)
-        DistroPackage::Arch.list[pkg.name.downcase] and usable_version?(pkg.version)
+        match_nixpkg(pkg) and usable_version?(pkg.version)
       end
 
       def self.newest_version_of(pkg)
         return nil unless covers?(pkg)
-        arch_pkg = DistroPackage::Arch.list[pkg.name.downcase]
-        return nil unless usable_version?(arch_pkg.version)
-        ( is_newer?(arch_pkg.version, pkg.version) ? arch_pkg.version : nil )
+        distro_pkg = match_nixpkg(pkg)
+        return nil unless usable_version?(distro_pkg.version)
+        ( is_newer?(distro_pkg.version, pkg.version) ? distro_pkg.version : nil )
       end
 
     end
 
+    # checks package versions against Arch Core, Community and Extra repositories
+    class Arch < Base
+
+      def self.match_nixpkg(pkg)
+        pkgname = pkg.name.downcase
+        list = DistroPackage::Arch.list
+
+        list[pkgname] or
+        list['xorg-'+pkgname] or
+        list['kdeedu-'+pkgname] or
+        list['kdemultimedia-'+pkgname] or
+        list['kdeutils-'+pkgname] or
+        list['kdegames-'+pkgname] or
+        list['kdebindings-'+pkgname] or
+        list['kdegraphics-'+pkgname] or
+        list['kdeaccessibility-'+pkgname] or
+        list[pkgname.gsub(/^python[0-9\.]*-/, 'python-')] or
+        list[pkgname.gsub(/^python[0-9\.]*-/, 'python2-')] or
+        list[pkgname.gsub(/^aspell-dict-/, 'aspell-')] or
+        list[pkgname.gsub(/^(haskell-.*)-ghc\d+\.\d+\.\d+$/, '\1')] or
+        list[pkgname.gsub(/^ktp-/, 'telepathy-kde-')]
+      end
+
+    end
 
     # checks package versions against Arch AUR
-    class AUR < PackageUpdaters::Base
+    class AUR < Base
 
-      def self.covers?(pkg)
-        DistroPackage::AUR.list[pkg.name.downcase] and usable_version?(pkg.version)
-      end
-
-      def self.newest_version_of(pkg)
-        return nil unless covers?(pkg)
-        arch_pkg = DistroPackage::AUR.list[pkg.name.downcase]
-        return nil unless usable_version?(arch_pkg.version)
-        ( is_newer?(arch_pkg.version, pkg.version) ? arch_pkg.version : nil )
+      def self.match_nixpkg(pkg)
+        DistroPackage::AUR.list[pkg.name.downcase]
       end
 
     end
 
-
     # TODO: checks package versions against Debian Sid
-    class Debian < PackageUpdaters::Base
+    class Debian < Base
 
-      def self.covers?(pkg)
-        DistroPackage::Debian.match_nixpkg(pkg) and usable_version?(pkg.version)
-      end
+      def self.match_nixpkg(pkg)
+        pkgname = pkg.name.downcase
+        list = DistroPackage::Debian.list
 
-      def self.newest_version_of(pkg)
-        return nil unless covers?(pkg)
-        deb_pkg = DistroPackage::Debian.match_nixpkg(pkg)
-        return nil unless usable_version?(deb_pkg.version)
-        ( is_newer?(deb_pkg.version, pkg.version) ? deb_pkg.version : nil )
+        list[pkgname] or
+        list[pkgname.gsub(/^python[0-9\.]*-/, '')] or
+        list[pkgname.gsub(/^perl-(.*)$/, 'lib\1-perl')] or
+        list[pkgname.gsub(/^(haskell-.*)-ghc\d+\.\d+\.\d+$/, '\1')] or
+        list[pkgname.gsub(/^xf86-/, 'xserver-xorg-')] or
+        list[pkgname+"1"] or
+        list[pkgname+"2"] or
+        list[pkgname+"3"] or
+        list[pkgname+"4"] or
+        list[pkgname+"5"] or
+        list[pkgname+"6"]
       end
 
     end
@@ -57,18 +78,22 @@ module PackageUpdaters
 
     # checks package versions agains those discovered by http://euscan.iksaif.net,
     # which include Gentoo portage, Gentoo developer repositories, euscan-discovered upstream.
-    class Gentoo < PackageUpdaters::Base
+    class Gentoo < Base
 
       def self.covers?(pkg)
-        DistroPackage::Gentoo.match_nixpkg(pkg) and usable_version?(pkg.version) and
+        match_nixpkg(pkg) and usable_version?(pkg.version) and
         not Repository::CPAN.covers?(pkg) and not Repository::Hackage.covers?(pkg)
       end
 
-      def self.newest_version_of(pkg)
-        return nil unless covers?(pkg)
-        gentoo_pkg = DistroPackage::Gentoo.match_nixpkg(pkg)
-        return nil unless usable_version?(gentoo_pkg.version)
-        ( is_newer?(gentoo_pkg.version, pkg.version) ? gentoo_pkg.version : nil )
+      def self.match_nixpkg(pkg)
+        pkgname = pkg.name.downcase
+        list = DistroPackage::Gentoo.list
+
+        list[pkgname] or
+        list[pkgname.gsub(/^ruby-/, '')] or
+        list[pkgname.gsub(/^python[0-9\.]*-/, '')] or
+        list[pkgname.gsub(/^perl-/, '')] or
+        list[pkgname.gsub(/^haskell-(.*)-ghc\d+\.\d+\.\d+$/,'\1')]
       end
 
     end
