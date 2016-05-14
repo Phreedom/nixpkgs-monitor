@@ -1,7 +1,7 @@
 { pkgs ? (import <nixpkgs> {}), stdenv ? pkgs.stdenv }:
 
 let
-  updater_runtime_deps = with pkgs; [
+  monitor_runtime_deps = with pkgs; [
     ruby_1_9 git patch curl bzip2 gzip gnutar gnugrep coreutils gnused bash file
   ];
   tame_nix = pkgs.lib.overrideDerivation pkgs.nixUnstable (a: {
@@ -28,8 +28,8 @@ in stdenv.mkDerivation rec {
     cp -r lib $out
     cp -r bin $out
 
-    wrapProgram "$out/bin/updatetool.rb" \
-        ${stdenv.lib.concatMapStrings (x: "--prefix PATH : ${x}/bin ") updater_runtime_deps} \
+    wrapProgram "$out/bin/nixpkgs-monitor" \
+        ${stdenv.lib.concatMapStrings (x: "--prefix PATH : ${x}/bin ") monitor_runtime_deps} \
           --prefix PATH : "${env.ruby}/bin:${tame_nix}/bin" \
           --prefix GEM_PATH : "${env}/${env.ruby.gemPath}" \
           --prefix RUBYLIB : "${env}/${env.ruby.gemPath}:$out/lib"  \

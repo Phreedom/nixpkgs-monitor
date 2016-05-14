@@ -121,9 +121,9 @@ in
       } // env_db;
 
       script = ''
-        ${npmon}/bin/updatetool.rb --all
+        ${npmon}/bin/nixpkgs-monitor --all
         ${pkgs.curl}/bin/curl ${cfg.host}:${toString cfg.port}/refresh
-        ${npmon}/bin/updatetool.rb --build --builder-count ${toString cfg.builderCount}
+        ${npmon}/bin/nixpkgs-monitor --build --builder-count ${toString cfg.builderCount}
       '';
 
       serviceConfig = {
@@ -135,7 +135,7 @@ in
     systemd.services."nixpkgs-monitor-updater-drop-negative-cache" = {
       environment = env_db;
       serviceConfig = {
-        ExecStart = "${npmon}/bin/updatetool.rb --redownload --rebuild";
+        ExecStart = "${npmon}/bin/nixpkgs-monitor --redownload --rebuild";
         User = cfg.user;
         WorkingDirectory = cfg.baseDir;
       };

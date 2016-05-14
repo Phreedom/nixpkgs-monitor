@@ -1,17 +1,20 @@
 # nixpkgs-monitor
 
-NixPkgs package quality, freshness, security monitoring and improvement tool.
+A tool to monitor and improve NixPkgs packages quality, freshness and security.
 
 ## NixOS module
 
-After checking out the nixpkgs-monitor repository, add to the configuration:
+After checking out the nixpkgs-monitor repository, add this to configuration.nix:
 
   require = [ /path/to/nixpkgs-monitor/service.nix ];
   services.nixpkgs-monitor.enable = true;
 
-This sets up 2 systemd units:
+This sets up 3 systemd units:
 * nixpkgs-monitor-site, a web interface. It will return errors until the first updater run is finished.
-* nixpkgs-monitor-updater, a job which does the full update checker, patch generator and builder run. You need to run it manually or via cron.
+* nixpkgs-monitor-updater, a job that does the full update checker, patch generator and builder run.
+You need to run it manually or via cron or timers.
+* nixpkgs-monitor-updater-drop-negative-cache, a maintenance job that drops failed tarball downloads and builds from the cache.
+Should be run from time to time to recover from intermittent failures such as: disk getting full, connectivity troubles, upstream services going down.
 
 ## How to install and use as a regular user
 
@@ -19,9 +22,9 @@ Have Nix? Just run:
 
   nix-env -if .
 
-## updatetool.rb
+## nixpkgs-monitor executable
 
-Does all the dirty jobs: obtains package metada, finds updates, vulnerabilities, generates patches and attempts to build them.
+Does all the dirty work: obtains package metada, finds updates, vulnerabilities, downloads tarballs, generates patches and attempts to build them.
 
 ### A typical workflow
 
@@ -41,17 +44,18 @@ Attempt building the generated patches: --build
 All the mentioned actions except for build: --all.
 A good idea before running the build step is to trigger a web interface refresh.
 
-## nixpkgs-monitor-site
+## nixpkgs-monitor-site executable
 
 Provides a nice web interface to browse the reports, patches, build logs and such.
-By default runs on http://localhost:4567. Must be run from the same directory as the updatetool.
+By default runs on http://localhost:4567. Must be run from the same directory as nixpkgs-monitor tool.
 
 The web interface caches some of the data in RAM, and must be kicked by requesting /refresh
-or restarted after updatetool run finishes.
+or restarted after nixpkgs-monitor run finishes.
 
 ## database
 
-updatetool.rb puts package cache, coverage, version mismatch and updater reports into a database(db.sqlite).
+nixpkgs-monitor puts package cache, coverage, version mismatch and updater reports into
+a database(db.sqlite by default).
 
 Coverage report is in estimated_coverage table, version mismatch report is in
 version_mismatch table and updater reports are in repository_* and distro_* tables.
@@ -60,8 +64,8 @@ Package caches are in packages_* tables.
 
 Tarball candidates are in tarballs table.
 
-Tarball hashes or '404' if download failed are in tarball_sha256 table.
-404 records can be dropped using updatetool.rb --redownload.
+Tarball hashes or '404' for failed downloads are in tarball_sha256 table.
+404 records can be dropped using nixpkgs-monitor --redownload.
 
 Generated patches along with derivation paths are in patches table.
 
@@ -69,7 +73,7 @@ You can extract individual patches by running something like
 SELECT patch FROM patches WHERE pkg_attr='package' AND version='version';
 
 Build logs and statuses are in builds table. Failed build records can be
-dropped using updatetool.rb --rebuild if you suspect intermittent build
+dropped using nixpkgs-monitor --rebuild if you suspect intermittent build
 failures caused by eg disk being full or network going down.
 
 Potential CVE matches are in cve_match table.
