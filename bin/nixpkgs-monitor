@@ -203,6 +203,7 @@ if actions.include? :check_updates
       end
     rescue => e
       NixPkgsMonitor::Reports::Timestamps.done("updater_#{updater.friendly_name}", "Error: #{e}")
+      log.error "Error: #{e}"
     end
   end
 
