@@ -150,6 +150,7 @@ distros_to_update.each do |distro|
   rescue Exception => e
     NixPkgsMonitor::Reports::Timestamps.done("fetch_#{distro.name.split('::').last.downcase}",
                                              "error: #{e}")
+    log.error "Error: #{e}"
     raise if distro == NixPkgsMonitor::DistroPackages::Nix
   end
 end
