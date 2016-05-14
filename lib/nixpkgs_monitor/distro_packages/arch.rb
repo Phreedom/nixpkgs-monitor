@@ -9,8 +9,8 @@ module NixPkgsMonitor module DistroPackages
       dont_expand = [ 'pidgin' ]
 
       pkgbuild = File.read(path, :encoding => 'ISO-8859-1') 
-      pkg_name = (pkgbuild =~ /pkgname=(.*)/ ? $1.strip : nil)
-      pkg_ver = (pkgbuild =~ /pkgver=(.*)/ ? $1.strip : nil)
+      /pkgname=\s*(?<pkg_name>\S+)/ =~ pkgbuild
+      /pkgver=\s*(?<pkg_ver>\S+)/ =~ pkgbuild
 
       pkg_name = entry if dont_expand.include? entry
       unless pkg_name and pkg_ver
@@ -18,13 +18,16 @@ module NixPkgsMonitor module DistroPackages
         return nil
       end
       if pkg_name.include? "("
-        puts "skipping #{entry}: unsupported multi-package PKGBUILD"
-        return nil
+        puts "warning #{entry}: unsupported multi-package PKGBUILD; might miss some of the packages it provides"
+        pkg_name = entry
       end
 
       url = %x(bash -c 'source #{path} && echo $source').split("\n").first
-      url.strip! if url
-      return new(entry, pkg_name, pkg_ver, url)
+      unless url
+        puts "skipping #{entry}: no url found"
+        return nil
+      end
+      new(entry, pkg_name, pkg_ver, url.strip)
     end
 
   end
@@ -42,31 +45,18 @@ module NixPkgsMonitor module DistroPackages
       puts %x(git clone git://projects.archlinux.org/svntogit/community.git)
       puts %x(cd community && git pull --rebase)
 
-      puts "Scanning Arch Core, Extra (packages.git) repositories..."
-      Dir.entries("packages").each do |entry|
+      (Dir.entries("packages") + Dir.entries("community")).each do |entry|
         next if entry == '.' or entry == '..'
 
         pkgbuild_name = File.join("packages", entry, "repos", "extra-i686", "PKGBUILD")
         pkgbuild_name = File.join("packages", entry, "repos", "core-i686", "PKGBUILD") unless File.exists? pkgbuild_name
+        pkgbuild_name = File.join("community", entry, "repos", "community-i686", "PKGBUILD") unless File.exists? pkgbuild_name
 
         if File.exists? pkgbuild_name
           package = parse_pkgbuild(entry, pkgbuild_name)
           arch_list[package.name] = package if package
         end
       end
-
-      puts "Scanning Arch Community repository..."
-      Dir.entries("community").each do |entry|
-        next if entry == '.' or entry == '..'
-
-        pkgbuild_name = File.join("community", entry, "repos", "community-i686", "PKGBUILD")
-
-        if File.exists? pkgbuild_name
-          package = parse_pkgbuild(entry, pkgbuild_name)
-          arch_list[package.name] = package if package
-        end
-      end
-
       serialize_list(arch_list.values)
     end
 
