@@ -1,13 +1,13 @@
-require 'package_updaters/base'
+require 'nixpkgs_monitor/package_updaters/base'
 
-require 'package_updaters/repository/cpan'
-require 'package_updaters/repository/hackage'
-require 'package_updaters/repository/pypi'
-require 'package_updaters/repository/rubygems'
+require 'nixpkgs_monitor/package_updaters/repository/cpan'
+require 'nixpkgs_monitor/package_updaters/repository/hackage'
+require 'nixpkgs_monitor/package_updaters/repository/pypi'
+require 'nixpkgs_monitor/package_updaters/repository/rubygems'
 
-module PackageUpdaters
+module NixPkgsMonitor module PackageUpdaters
 
-  class GentooDistfiles < PackageUpdaters::Base
+  class GentooDistfiles < NixPkgsMonitor::PackageUpdaters::Base
 
     def self.covers?(pkg)
       return false if Repository::CPAN.covers?(pkg) or Repository::Pypi.covers?(pkg) or
@@ -44,4 +44,4 @@ module PackageUpdaters
 
   end
 
-end
+end end

@@ -1,8 +1,8 @@
 require 'nokogiri'
-require 'distro-package'
+require 'nixpkgs_monitor/distro_packages'
 require 'uri'
 
-module SecurityAdvisory
+module NixPkgsMonitor module SecurityAdvisories
 
   class CVE
     attr_reader :id, :packages
@@ -99,10 +99,10 @@ module SecurityAdvisory
 
     def matching_nixpkgs
       return nil unless %r{(?<cat>[^/]+)/(?<name>[^/]+)} =~ packages[0]
-      result  = DistroPackage::Nix.list[name]
-      result  = DistroPackage::Nix.list['ruby-' + name] unless result
-      result  = DistroPackage::Nix.list['python-' + name] unless result
-      result  = DistroPackage::Nix.list['perl-' + name] unless result
+      result  = NixPkgsMonitor::DistroPackages::Nix.list[name]
+      result  = NixPkgsMonitor::DistroPackages::Nix.list['ruby-' + name] unless result
+      result  = NixPkgsMonitor::DistroPackages::Nix.list['python-' + name] unless result
+      result  = NixPkgsMonitor::DistroPackages::Nix.list['perl-' + name] unless result
       return result
     end
 
@@ -111,5 +111,4 @@ module SecurityAdvisory
 
   end
 
-
-end
+end end

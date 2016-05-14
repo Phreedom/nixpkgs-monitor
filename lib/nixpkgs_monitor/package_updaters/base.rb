@@ -1,11 +1,11 @@
 require 'mechanize'
 
-module PackageUpdaters
+module NixPkgsMonitor module PackageUpdaters
 
   class Base
 
     def self.friendly_name
-      name.gsub(/^PackageUpdaters::/,"").gsub("::","_").downcase.to_sym
+      name.gsub(/^NixPkgsMonitor::PackageUpdaters::/,"").gsub("::","_").downcase.to_sym
     end
 
 
@@ -230,4 +230,4 @@ module PackageUpdaters
 
   end
 
-end
+end end

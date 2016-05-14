@@ -1,6 +1,5 @@
-module Reports
+module NixPkgsMonitor module Reports
 
-  # set
   class Timestamps
 
     def self.done(action, message = nil)
@@ -40,4 +39,4 @@ module Reports
 
   end
 
-end
+end end

@@ -3,10 +3,10 @@
 require 'optparse'
 require 'mechanize'
 require 'logger'
-require 'distro-package'
-require 'package_updaters'
-require 'security-advisory'
-require 'reports'
+require 'nixpkgs_monitor/distro_packages'
+require 'nixpkgs_monitor/package_updaters'
+require 'nixpkgs_monitor/security_advisories'
+require 'nixpkgs_monitor/reports'
 require 'sequel'
 require 'set'
 
@@ -32,7 +32,7 @@ DB = (ENV["DB"] && Sequel.connect(ENV["DB"])) || Sequel.sqlite('./db.sqlite')
 
 distros_to_update = Set.new
 
-updaters = PackageUpdaters::Updaters
+updaters = NixPkgsMonitor::PackageUpdaters::Updaters
 
 OptionParser.new do |o|
   o.on("-v", "Verbose output. Can be specified multiple times") do
@@ -40,23 +40,23 @@ OptionParser.new do |o|
   end
 
   o.on("--list-arch", "List Arch packages") do
-    distros_to_update << DistroPackage::Arch
+    distros_to_update << NixPkgsMonitor::DistroPackages::Arch
   end
 
   o.on("--list-aur", "List AUR packages") do
-    distros_to_update << DistroPackage::AUR
+    distros_to_update << NixPkgsMonitor::DistroPackages::AUR
   end
 
   o.on("--list-nix", "List nixpkgs packages") do
-    distros_to_update << DistroPackage::Nix
+    distros_to_update << NixPkgsMonitor::DistroPackages::Nix
   end
 
   o.on("--list-deb", "List Debian packages") do
-    distros_to_update << DistroPackage::Debian
+    distros_to_update << NixPkgsMonitor::DistroPackages::Debian
   end
 
   o.on("--list-gentoo", "List Gentoo packages") do
-    distros_to_update << DistroPackage::Gentoo
+    distros_to_update << NixPkgsMonitor::DistroPackages::Gentoo
   end
 
   o.on("--check-pkg-version-match", "List Nix packages for which either tarball can't be parsed or its version doesn't match the package version") do
@@ -64,7 +64,7 @@ OptionParser.new do |o|
   end
 
   o.on("--updater UPDATER", "Check for updates using only UPDATER. Accepts partial names.") do |uname|
-    updaters = PackageUpdaters::Updaters.select { |u| u.friendly_name.to_s.include? uname.downcase }
+    updaters = NixPkgsMonitor::PackageUpdaters::Updaters.select { |u| u.friendly_name.to_s.include? uname.downcase }
   end
 
   o.on("--check-updates", "list NixPkgs packages which have updates available") do
@@ -119,7 +119,10 @@ OptionParser.new do |o|
 
   o.on("--all", "Update package definitions, check for updates, vulnerabilities, tarballs and write patches") do
     actions.merge([ :coverage, :check_updates, :cve_check, :cve_update, :tarballs, :patches ])
-    distros_to_update.merge([ DistroPackage::Arch, DistroPackage::Nix, DistroPackage::Debian, DistroPackage::Gentoo ])
+    distros_to_update.merge([ NixPkgsMonitor::DistroPackages::Arch,
+                              NixPkgsMonitor::DistroPackages::Nix,
+                              NixPkgsMonitor::DistroPackages::Debian,
+                              NixPkgsMonitor::DistroPackages::Gentoo ])
   end
 
   o.on("-h", "--help", "Show this message") do
@@ -137,15 +140,17 @@ end
 abort "No action requested. See --help for more information." unless distros_to_update.count > 0 or actions.count > 0
 
 Sequel.extension :migration
-Sequel::Migrator.run(DB, File.join(File.dirname(__FILE__), '..', 'lib', 'migrations') )
+Sequel::Migrator.run(DB, File.join(File.dirname(__FILE__), '..', 'lib', 'nixpkgs_monitor', 'migrations') )
 
 distros_to_update.each do |distro|
   begin
     log.debug distro.generate_list.inspect
-    Reports::Timestamps.done("fetch_#{distro.name.split('::').last.downcase}", "found #{distro.packages.count} packages")
+    NixPkgsMonitor::Reports::Timestamps.done("fetch_#{distro.name.split('::').last.downcase}",
+                                             "found #{distro.packages.count} packages")
   rescue Exception => e
-    Reports::Timestamps.done("fetch_#{distro.name.split('::').last.downcase}", "error: #{e}")
-    raise if distro == DistroPackage::Nix
+    NixPkgsMonitor::Reports::Timestamps.done("fetch_#{distro.name.split('::').last.downcase}",
+                                             "error: #{e}")
+    raise if distro == NixPkgsMonitor::DistroPackages::Nix
   end
 end
 
@@ -155,20 +160,22 @@ if actions.include? :coverage
   DB.transaction do
     DB[:estimated_coverage].delete
 
-    DistroPackage::Nix.packages.each do |pkg|
-      DB[:estimated_coverage] << { :pkg_attr => pkg.internal_name,
-                                   :coverage => PackageUpdaters::Updaters.count{ |updater| updater.covers?(pkg) } }
+    NixPkgsMonitor::DistroPackages::Nix.packages.each do |pkg|
+      DB[:estimated_coverage] << {
+          :pkg_attr => pkg.internal_name,
+          :coverage => NixPkgsMonitor::PackageUpdaters::Updaters.count{ |updater| updater.covers?(pkg) }
+      }
     end
 
-    Reports::Timestamps.done(:coverage)
+    NixPkgsMonitor::Reports::Timestamps.done(:coverage)
   end
 
 end
 if actions.include? :check_updates
 
   pkgs_to_check = ( pkg_names_to_check.empty? ?
-                    DistroPackage::Nix.packages :
-                    pkg_names_to_check.map{ |pkgname| DistroPackage::Nix.list[pkgname] }
+                    NixPkgsMonitor::DistroPackages::Nix.packages :
+                    pkg_names_to_check.map{ |pkgname| NixPkgsMonitor::DistroPackages::Nix.list[pkgname] }
                   )
 
   updaters.each do |updater|
@@ -191,14 +198,15 @@ if actions.include? :check_updates
           end
         end
 
-        Reports::Timestamps.done("updater_#{updater.friendly_name}", "Found #{DB[updater.friendly_name].count} updates")
+        NixPkgsMonitor::Reports::Timestamps.done("updater_#{updater.friendly_name}",
+                                                 "Found #{DB[updater.friendly_name].count} updates")
       end
     rescue => e
-      Reports::Timestamps.done("updater_#{updater.friendly_name}", "Error: #{e}")
+      NixPkgsMonitor::Reports::Timestamps.done("updater_#{updater.friendly_name}", "Error: #{e}")
     end
   end
 
-  Reports::Timestamps.done(:updaters)
+  NixPkgsMonitor::Reports::Timestamps.done(:updaters)
 
 end
 if actions.include? :drop_negative_tarball_cache
@@ -243,7 +251,7 @@ if actions.include? :tarballs
 
     updaters.each do |updater|
       DB[updater.friendly_name].all.each do |row|
-        pkg = DistroPackage::Nix.by_internal_name[row[:pkg_attr]]
+        pkg = NixPkgsMonitor::DistroPackages::Nix.by_internal_name[row[:pkg_attr]]
         next unless pkg
 
         tarballs =  [ updater.find_tarball(pkg, row[:version]) ].flatten
@@ -258,13 +266,13 @@ if actions.include? :tarballs
       end
     end
 
-    Reports::Timestamps.done(:tarballs)
+    NixPkgsMonitor::Reports::Timestamps.done(:tarballs)
   end
 
 end
 if actions.include? :patches
 
-  puts %x(cd #{DistroPackage::Nix.repository_path} && git checkout master --force)
+  puts %x(cd #{NixPkgsMonitor::DistroPackages::Nix.repository_path} && git checkout master --force)
 
   DB.transaction do
 
@@ -273,15 +281,16 @@ if actions.include? :patches
   # this is the biggest and ugliest collection of hacks
 
   DB[:tarballs].join(:tarball_sha256,:tarball => :tarball).exclude(:sha256 => "404").distinct.all.each  do |row|
-    nixpkg = DistroPackage::Nix.by_internal_name[row[:pkg_attr]]
+    nixpkg = NixPkgsMonitor::DistroPackages::Nix.by_internal_name[row[:pkg_attr]]
     next unless nixpkg
 
-    file_name = nixpkg.position && File.join(DistroPackage::Nix.repository_path, nixpkg.position.rpartition(':')[0])
+    file_name = nixpkg.position && File.join(NixPkgsMonitor::DistroPackages::Nix.repository_path,
+                                             nixpkg.position.rpartition(':')[0])
     original_content = file_name && File.readlines(file_name)
     sha256_location = original_content && original_content.index{ |l| l.include? nixpkg.sha256 }
     unless sha256_location
       #puts "failed to find the original hash value in the file reported to contain the derivation for #{row[:pkg_attr]}. Grepping for it instead"
-      file_name =  %x(grep -ir '#{nixpkg.sha256}' -rl #{File.join(DistroPackage::Nix.repository_path, 'pkgs')}).split("\n")[0]
+      file_name =  %x(grep -ir '#{nixpkg.sha256}' -rl #{File.join(NixPkgsMonitor::DistroPackages::Nix.repository_path, 'pkgs')}).split("\n")[0]
       original_content = File.readlines(file_name)
 
       sha256_location =  original_content.index{ |l| l.include? nixpkg.sha256 }
@@ -315,8 +324,8 @@ if actions.include? :patches
       patched_v[version_location].sub!(nixpkg.version, row[:version])
 
       File.write(file_name, patched_v.join)
-      patch = %x(cd #{DistroPackage::Nix.repository_path} && git diff)
-      new_pkg = DistroPackage::Nix.load_package(row[:pkg_attr])
+      patch = %x(cd #{NixPkgsMonitor::DistroPackages::Nix.repository_path} && git diff)
+      new_pkg = NixPkgsMonitor::DistroPackages::Nix.load_package(row[:pkg_attr])
 
       success = (new_pkg and new_pkg.sha256 == row[:sha256] and new_pkg.version == row[:version])
       if success and new_pkg.url == row[:tarball]
@@ -350,8 +359,8 @@ if actions.include? :patches
           patched_s[src_url_location].sub!(/url\s*=\s*"([^"]*)"/, %{url = "#{new_url}"})
 
           File.write(file_name, patched_s.join)
-          patch = %x(cd #{DistroPackage::Nix.repository_path} && git diff)
-          new_pkg = DistroPackage::Nix.load_package(row[:pkg_attr])
+          patch = %x(cd #{NixPkgsMonitor::DistroPackages::Nix.repository_path} && git diff)
+          new_pkg = NixPkgsMonitor::DistroPackages::Nix.load_package(row[:pkg_attr])
 
           s_success = (new_pkg and new_pkg.url == row[:tarball] and new_pkg.sha256 == row[:sha256] and new_pkg.version == row[:version])
           if s_success
@@ -378,7 +387,7 @@ if actions.include? :patches
     File.write(file_name, original_content.join)
   end
 
-  Reports::Timestamps.done(:patches)
+  NixPkgsMonitor::Reports::Timestamps.done(:patches)
   end
 
 end
@@ -433,17 +442,17 @@ if actions.include? :build
   end.
   each(&:join) # wait for threads to finish
 
-  Reports::Timestamps.done(:builds)
+  NixPkgsMonitor::Reports::Timestamps.done(:builds)
 
 end
 if actions.include? :check_pkg_version_match
 
   DB.transaction do
-    version_mismatch = Reports::Logs.new(:version_mismatch)
+    version_mismatch = NixPkgsMonitor::Reports::Logs.new(:version_mismatch)
     DB[:version_mismatch].delete
 
-    DistroPackage::Nix.packages.
-      reject{|pkg| PackageUpdaters::Base.versions_match?(pkg)}.
+    NixPkgsMonitor::DistroPackages::Nix.packages.
+      reject{|pkg| NixPkgsMonitor::PackageUpdaters::Base.versions_match?(pkg)}.
       each{|pkg| version_mismatch.pkg(pkg.internal_name)}
   end
 
@@ -454,7 +463,7 @@ if actions.include? :find_unmatched_advisories
     # these advisories don't apply because they have been checked to refer to packages that don't exist in nixpgs
     "GLSA-201210-02",
   ]
-  SecurityAdvisory::GLSA.list.each do |glsa|
+  NixPkgsMonitor::SecurityAdvisories::GLSA.list.each do |glsa|
     nixpkgs = glsa.matching_nixpkgs
     if nixpkgs
       log.info "Matched #{glsa.id} to #{nixpkgs.internal_name}"
@@ -467,7 +476,7 @@ if actions.include? :find_unmatched_advisories
 end
 
 
-SecurityAdvisory::CVE.fetch_updates if actions.include? :cve_update
+NixPkgsMonitor::SecurityAdvisories::CVE.fetch_updates if actions.include? :cve_update
 
 
 if actions.include? :cve_check
@@ -476,13 +485,13 @@ if actions.include? :cve_check
     tokens.keys.sort{|x,y| tokens[x] <=> tokens[y] }.map{|t| "#{t}: #{tokens[t]}"}.join("\n")
   end
 
-  list = SecurityAdvisory::CVE.list
+  list = NixPkgsMonitor::SecurityAdvisories::CVE.list
 
   products = {}
   product_to_cve = {}
   list.each do |entry|
     entry.packages.each do |pkg|
-      (supplier, product, version) = SecurityAdvisory::CVE.parse_package(pkg)
+      (supplier, product, version) = NixPkgsMonitor::SecurityAdvisories::CVE.parse_package(pkg)
       pname = "#{product}"
       products[pname] = Set.new unless products[pname]
       products[pname] << version
@@ -510,7 +519,7 @@ if actions.include? :cve_check
 
   selectivity = {}
   tokens.keys.each do |token|
-    selectivity[token] = DistroPackage::Nix.packages.count do |pkg|
+    selectivity[token] = NixPkgsMonitor::DistroPackages::Nix.packages.count do |pkg|
       pkg.internal_name.include? token or pkg.name.include? token
     end
   end
@@ -522,7 +531,7 @@ if actions.include? :cve_check
                                  }
   log.debug "false positive impact \n #{sorted_hash_to_s(false_positive_impact)} \n\n"
 
-  common_prefixes = DistroPackage::Nix.list.keys.
+  common_prefixes = NixPkgsMonitor::DistroPackages::Nix.list.keys.
       map{ |name| ((%r{^(?<prefix>[^-_]*)[-_]} =~ name) and (prefix.length >2)) ? prefix : nil }.
       reject(&:nil?).
       each_with_object(Hash.new(0)){ |prefix, counts| counts[prefix] += 1 }.
@@ -561,7 +570,7 @@ if actions.include? :cve_check
     end
 
     pkgs =
-      DistroPackage::Nix.packages.select do |pkg|
+      NixPkgsMonitor::DistroPackages::Nix.packages.select do |pkg|
         score = tk.reduce(0) do |score, token|
           res = ((pkg.internal_name.include? token or pkg.name.include? token) ? 1 : 0)
           res *= ( selectivity[token]>20 ? 0.51 : 1 )
@@ -602,7 +611,7 @@ if actions.include? :cve_check
     end
   end
 
-  Reports::Timestamps.done(:cve_check)
+  NixPkgsMonitor::Reports::Timestamps.done(:cve_check)
   end
 
 end

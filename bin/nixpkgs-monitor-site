@@ -3,10 +3,10 @@
 require 'sinatra'
 require 'haml'
 require 'sequel'
-require 'distro-package'
-require 'package_updaters'
-require 'build-log'
-require 'reports'
+require 'nixpkgs_monitor/distro_packages'
+require 'nixpkgs_monitor/package_updaters'
+require 'nixpkgs_monitor/build_log'
+require 'nixpkgs_monitor/reports'
 require 'cgi'
 require 'rss'
 require 'diffy'
@@ -41,15 +41,15 @@ set :server, 'webrick'
   end
 
   def maintainer_stats
-    @@maintainer_stats ||= DistroPackage::Nix.packages.
+    @@maintainer_stats ||= NixPkgsMonitor::DistroPackages::Nix.packages.
         each_with_object(Hash.new(0)){ |pkg, mstat| mstat[pkg.maintainers.count] += 1 }
   end
 
   def outdated
-    @@outdated ||= PackageUpdaters::Updaters.each.
+    @@outdated ||= NixPkgsMonitor::PackageUpdaters::Updaters.each.
         with_object(Hash.new{|h,k| h[k] = Hash.new{|h,k| h[k] = Array.new } }) do |updater, data|
           DB[updater.friendly_name].all.each do |row|
-            pkg = DistroPackage::Nix.by_internal_name[row[:pkg_attr]]
+            pkg = NixPkgsMonitor::DistroPackages::Nix.by_internal_name[row[:pkg_attr]]
             if pkg.nil? or pkg.branch.to_s.empty? or is_branch_update?(pkg, row[:version])
               data[row[:pkg_attr]][row[:version]] << updater.friendly_name.to_s
             end
@@ -59,15 +59,15 @@ set :server, 'webrick'
 
   def is_branch_update?(pkg, new_ver)
     return false if pkg.branch.to_s.empty?
-    branch_t = PackageUpdaters::Base.tokenize_version(pkg.branch)
-    nv_t = PackageUpdaters::Base.tokenize_version(new_ver)
+    branch_t = NixPkgsMonitor::PackageUpdaters::Base.tokenize_version(pkg.branch)
+    nv_t = NixPkgsMonitor::PackageUpdaters::Base.tokenize_version(new_ver)
     return (nv_t.nil? or branch_t.nil? or (nv_t[0..branch_t.size-1] == branch_t) )
   end
 
   def is_major_update?(pkg, new_ver)
     return not(is_branch_update?(pkg, new_ver)) unless pkg.branch.to_s.empty?
-    v_t = PackageUpdaters::Base.tokenize_version(pkg.version)
-    nv_t = PackageUpdaters::Base.tokenize_version(new_ver)
+    v_t = NixPkgsMonitor::PackageUpdaters::Base.tokenize_version(pkg.version)
+    nv_t = NixPkgsMonitor::PackageUpdaters::Base.tokenize_version(new_ver)
     return (
       not(v_t) or not(nv_t) or (v_t[0] != nv_t[0]) or
       (v_t[2]>=0 and (v_t[1] != nv_t[1]))
@@ -94,7 +94,7 @@ set :server, 'webrick'
     @@coverage = nil
     @@maintainers = nil
     @@maintainers_with_email = nil
-    DistroPackage::Nix.refresh
+    NixPkgsMonitor::DistroPackages::Nix.refresh
     cache.clear
 
     vulnerable
@@ -115,7 +115,7 @@ set :server, 'webrick'
                              select(:pkg_attr).distinct.map(:pkg_attr) ) :
                     nil )
 
-    Set.new( DistroPackage::Nix.by_internal_name.select { |pkg, nixpkg|
+    Set.new( NixPkgsMonitor::DistroPackages::Nix.by_internal_name.select { |pkg, nixpkg|
       # maintainer count
       (filter[:mc].to_s.empty? or filter[:mc].to_i == nixpkg.maintainers.count) and
       # coverage
@@ -202,7 +202,7 @@ set :server, 'webrick'
 
   def render_pkgname(pkg, options = [])
     options = [ options ].flatten
-    nixpkg = DistroPackage::Nix.by_internal_name[pkg]
+    nixpkg = NixPkgsMonitor::DistroPackages::Nix.by_internal_name[pkg]
     %{<a href="#{options.include?(:with_base) ? settings.base_url : "/"}pd?p=#{pkg}" class=pkglink data-target=#{pkg}>#{pkg}#{
           nixpkg.branch ? "[#{nixpkg.branch}]" : ""
           }#{
@@ -275,7 +275,7 @@ get '/' do
     :total  => DB[:patches].count,
   }
 
-  cache[:task_report] = Reports::Timestamps.all.
+  cache[:task_report] = NixPkgsMonitor::Reports::Timestamps.all.
       map{|ts| %{
           <tr><td>#{ts[:action]}</td>
               <td>#{ts[:timestamp].utc.strftime("%Y-%m-%d %H:%M:%S")}</td>
@@ -313,7 +313,7 @@ get '/coverage' do
       sort_by{ |pkg, c| c }.
       map{ |pkg, c| %{
         <tr><td>#{render_pkgname(pkg)}</td><td>#{c}</td>
-        <td>#{DistroPackage::Nix.by_internal_name[pkg].maintainers.count}</td></tr>
+        <td>#{NixPkgsMonitor::DistroPackages::Nix.by_internal_name[pkg].maintainers.count}</td></tr>
         <tr><td colspan=3 id=#{pkg}></td>
       } }.
       join
@@ -348,7 +348,7 @@ get '/outdated', :rss_requested => true do
           next unless build_record and build_record[0] == "ok"
         end
 
-        nixpkg = DistroPackage::Nix.by_internal_name[pkg]
+        nixpkg = NixPkgsMonitor::DistroPackages::Nix.by_internal_name[pkg]
         maker.items.new_item do |item|
           item.title = "#{pkg}#{
               nixpkg.branch ? "[#{nixpkg.branch}]" : ""
@@ -364,7 +364,7 @@ get '/outdated', :rss_requested => false do
   @rss_available = true
 
   report = @dataset.map do |pkg, v|
-      nixpkg = DistroPackage::Nix.by_internal_name[pkg]
+      nixpkg = NixPkgsMonitor::DistroPackages::Nix.by_internal_name[pkg]
       %{
           <tr><td>#{render_pkgname(pkg)}#{
             vulnerable.has_key?(pkg) ?
@@ -394,7 +394,7 @@ get '/patch' do
   %{
 From: #{maintainers_with_email.select{|m| params[:m] and m.downcase.include? (params[:m].downcase)}.first ||
         "Nixpkgs Monitor <none@none>" }
-Subject: #{params[:p]}: #{DistroPackage::Nix.by_internal_name[params[:p]].version} -> #{params[:v]}#{
+Subject: #{params[:p]}: #{NixPkgsMonitor::DistroPackages::Nix.by_internal_name[params[:p]].version} -> #{params[:v]}#{
   vulnerable.has_key?(params[:p]) ? ", potentially fixes #{vulnerable[params[:p]].values.map{|s| s.to_a}.flatten.join(', ')}": ""
 }
 
@@ -424,7 +424,7 @@ get '/vulnerable', :rss_requested => true do
       candidates.each do |prod, cves|
         cves.each do |cve|
           maker.items.new_item do |item|
-            item.title = "#{pkg}:#{DistroPackage::Nix.by_internal_name[pkg].version} matches #{cve} as #{prod}"
+            item.title = "#{pkg}:#{NixPkgsMonitor::DistroPackages::Nix.by_internal_name[pkg].version} matches #{cve} as #{prod}"
             item.description = "#{render_pkgname(pkg, [:with_version, :with_base])} matches #{render_cve(cve)} as #{prod}"
           end
         end
@@ -459,7 +459,7 @@ end
 
 get '/pd' do
   halt "package not specified" unless params[:p]
-  pkg = DistroPackage::Nix.by_internal_name[params[:p]]
+  pkg = NixPkgsMonitor::DistroPackages::Nix.by_internal_name[params[:p]]
   halt "package not found" unless pkg
   %{
     #{ request.xhr? ? "" :
@@ -540,11 +540,11 @@ end
 
 get '/buildlog' do
   halt 404, "derivation not specified" unless params[:outpath]
-  log = BuildLog.get_log(params[:outpath])
+  log = NixPkgsMonitor::BuildLog.get_log(params[:outpath])
   halt 404, "log not found" unless log
   content_type 'text/plain', :charset => 'utf-8'
 
-  lint = BuildLog.lint(log)
+  lint = NixPkgsMonitor::BuildLog.lint(log)
 
   %{
 #{ lint.empty? ? "" :
@@ -560,13 +560,13 @@ end
 
 get '/builddiff' do
   halt 404, "derivations not specified" unless params[:old] and params[:new]
-  oldlog = BuildLog.get_log(params[:old])
-  newlog = BuildLog.get_log(params[:new])
+  oldlog = NixPkgsMonitor::BuildLog.get_log(params[:old])
+  newlog = NixPkgsMonitor::BuildLog.get_log(params[:new])
   halt 404, "log not found" unless oldlog and newlog
 
   "<style>#{Diffy::CSS}</style>" +
-  Diffy::Diff.new(BuildLog.sanitize(oldlog, params[:old]),
-                  BuildLog.sanitize(newlog, params[:new]),
+  Diffy::Diff.new(NixPkgsMonitor::BuildLog.sanitize(oldlog, params[:old]),
+                  NixPkgsMonitor::BuildLog.sanitize(newlog, params[:new]),
                   :context => 2).to_s(:html)
 end
 

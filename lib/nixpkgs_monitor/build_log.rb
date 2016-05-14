@@ -1,6 +1,6 @@
-require "open-uri"
+require 'open-uri'
 
-module BuildLog
+module NixPkgsMonitor module BuildLog
 
   def BuildLog.lint(log)
     package_names = [ "gobject-introspection",
@@ -56,4 +56,4 @@ module BuildLog
     get_db_log(outpath) || get_hydra_log(outpath)
   end
 
-end
+end end

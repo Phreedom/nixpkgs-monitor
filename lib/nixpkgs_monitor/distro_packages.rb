@@ -1,6 +1,6 @@
 require 'nokogiri'
 
-module DistroPackage
+module NixPkgsMonitor module DistroPackages
 
   # Generic distro package
   class Package
@@ -461,4 +461,4 @@ module DistroPackage
 
   end
 
-end
+end end

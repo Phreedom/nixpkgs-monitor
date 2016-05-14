@@ -1,3 +1,5 @@
+# currently defunct
+
 require 'optparse'
 require 'set'
 require './distro-package.rb'
