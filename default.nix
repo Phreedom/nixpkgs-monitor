@@ -1,9 +1,11 @@
 { pkgs ? (import <nixpkgs> {}), stdenv ? pkgs.stdenv }:
 
 let
-  updater_runtime_deps = with pkgs; [ ruby_1_9 git patch curl bzip2 gzip gnutar gnugrep coreutils gnused bash file ];
+  updater_runtime_deps = with pkgs; [
+    ruby_1_9 git patch curl bzip2 gzip gnutar gnugrep coreutils gnused bash file
+  ];
   tame_nix = pkgs.lib.overrideDerivation pkgs.nixUnstable (a: {
-    patches = [ ./expose-attrs.patch ./extra-meta.patch ];
+    patches = [ ./build/expose-attrs.patch ./build/extra-meta.patch ];
   });
 
 in stdenv.mkDerivation rec {
@@ -14,9 +16,9 @@ in stdenv.mkDerivation rec {
   env = pkgs.bundlerEnv {
     name = "nixpkgs-monitor-dev";
     ruby = pkgs.ruby_1_9;
-    gemfile = ./Gemfile;
-    lockfile = ./Gemfile.lock;
-    gemset = ./gemset.nix;
+    gemfile = ./build/Gemfile;
+    lockfile = ./build/Gemfile.lock;
+    gemset = ./build/gemset.nix;
   };
 
   buildInputs = [ pkgs.makeWrapper env.ruby pkgs.bundler ];
