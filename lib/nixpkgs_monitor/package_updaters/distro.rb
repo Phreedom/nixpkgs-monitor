@@ -18,12 +18,10 @@ module NixPkgsMonitor module PackageUpdaters module Distro
 
   end
 
-  # checks package versions against Arch Core, Community and Extra repositories
-  class Arch < Base
+  class ArchBase < Base
 
     def self.match_nixpkg(pkg)
       pkgname = pkg.name.downcase
-      list = NixPkgsMonitor::DistroPackages::Arch.list
 
       list[pkgname] or
       list['xorg-'+pkgname] or
@@ -43,11 +41,20 @@ module NixPkgsMonitor module PackageUpdaters module Distro
 
   end
 
-  # checks package versions against Arch AUR
-  class AUR < Base
+  # checks package versions against Arch Core, Community and Extra repositories
+  class Arch < ArchBase
 
-    def self.match_nixpkg(pkg)
-      NixPkgsMonitor::DistroPackages::AUR.list[pkg.name.downcase]
+    def self.list
+      NixPkgsMonitor::DistroPackages::Arch.list
+    end
+
+  end
+
+  # checks package versions against Arch AUR
+  class AUR < ArchBase
+
+    def self.list
+      NixPkgsMonitor::DistroPackages::AUR.list
     end
 
   end
