@@ -4,21 +4,14 @@ require 'nokogiri'
 
 module NixPkgsMonitor module DistroPackages
 
-  # FIXME: nixpkgs often override package versions with suffixes such as -gui
-  # which break matching because nixpks keeps only 1 of the packages
-  # with the same name
   class Nix < NixPkgsMonitor::DistroPackages::Base
 
     attr_accessor :homepage, :repository_git, :branch, :sha256, :maintainers, :position, :outpath, :drvpath
     @cache_name = "nix"
 
     def version
-      result = @version.gsub(/-profiling$/, "").gsub(/-gimp-2.6.\d+-plugin$/,"")
-      result.gsub!(/-3\.9\.\d$/,"") if internal_name.include? 'linuxPackages'
-      result = result.gsub(/-gui$/,"").gsub(/-single$/,"").gsub(/-with-X$/,"")
-      result = result.gsub(/-with-svn$/,"").gsub(/-full$/,"").gsub(/-client$/,"")
-      result = result.gsub(/-daemon$/,"").gsub(/-static$/,"").gsub(/-binary$/,"")
-      result = result.gsub(/-with-perl$/,"")
+      result = @version.gsub(/-gimp-\d.\d.\d+-plugin$/,"")
+      result.gsub!(/-[34]\.\d(\.|-rc)\d$/,"") if internal_name.include? 'linuxPackages'
       return result
     end
 
