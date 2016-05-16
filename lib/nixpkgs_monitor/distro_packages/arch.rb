@@ -1,33 +1,30 @@
 require 'nixpkgs_monitor/distro_packages/base'
+require 'set'
 
 module NixPkgsMonitor module DistroPackages
 
   class GenericArch < NixPkgsMonitor::DistroPackages::Base
 
-    # FIXME: support multi-output PKGBUILDs
     def self.parse_pkgbuild(entry, path)
-      dont_expand = [ 'pidgin' ]
+      pkg_data = %x(bash -c 'source #{path} && echo -e $source\\\\n$pkgver\\\\n${pkgname[*]}').split("\n")
+      url = pkg_data[0].strip
+      pkg_ver = pkg_data[1].strip
+      pkg_names = [entry] + pkg_data[2].split(' ')
 
-      pkgbuild = File.read(path, :encoding => 'ISO-8859-1') 
-      /pkgname=\s*(?<pkg_name>\S+)/ =~ pkgbuild
-      /pkgver=\s*(?<pkg_ver>\S+)/ =~ pkgbuild
-
-      pkg_name = entry if dont_expand.include? entry
-      unless pkg_name and pkg_ver
-        puts "skipping #{entry}: no package name or version"
-        return nil
+      if pkg_ver.to_s.empty?
+        puts "skipping #{entry}: no package version"
+        return {}
       end
-      if pkg_name.include? "("
-        puts "warning #{entry}: unsupported multi-package PKGBUILD; might miss some of the packages it provides"
-        pkg_name = entry
-      end
-
-      url = %x(bash -c 'source #{path} && echo $source').split("\n").first
-      unless url
+      if url.to_s.empty?
         puts "skipping #{entry}: no url found"
-        return nil
+        return {}
       end
-      new(entry, pkg_name, pkg_ver, url.strip)
+
+      puts "warning #{entry}: failed to parse package name list" if pkg_names.length <= 1
+
+      Set.new(pkg_names).each_with_object(Hash.new) do |name, pkgs|
+        pkgs[name] = new(name, name, pkg_ver, url.strip)
+      end
     end
 
   end
@@ -45,17 +42,13 @@ module NixPkgsMonitor module DistroPackages
       puts %x(git clone git://projects.archlinux.org/svntogit/community.git)
       puts %x(cd community && git pull --rebase)
 
-      (Dir.entries("packages") + Dir.entries("community")).each do |entry|
-        next if entry == '.' or entry == '..'
-
-        pkgbuild_name = File.join("packages", entry, "repos", "extra-i686", "PKGBUILD")
-        pkgbuild_name = File.join("packages", entry, "repos", "core-i686", "PKGBUILD") unless File.exists? pkgbuild_name
-        pkgbuild_name = File.join("community", entry, "repos", "community-i686", "PKGBUILD") unless File.exists? pkgbuild_name
-
-        if File.exists? pkgbuild_name
-          package = parse_pkgbuild(entry, pkgbuild_name)
-          arch_list[package.name] = package if package
-        end
+      (Dir.entries("packages") + Dir.entries("community")).reject{ |entry| ['.', '..'].include? entry }
+                                                          .each do |entry|
+        [ File.join("packages", entry, "repos", "extra-i686", "PKGBUILD"),
+          File.join("packages", entry, "repos", "core-i686", "PKGBUILD"),
+          File.join("community", entry, "repos", "community-i686", "PKGBUILD")
+        ].select { |f| File.exists? f }
+         .each { |pkgbuild_file| arch_list.merge!(parse_pkgbuild(entry, pkgbuild_file)) }
       end
       serialize_list(arch_list.values)
     end
@@ -79,11 +72,8 @@ module NixPkgsMonitor module DistroPackages
       Dir.entries("aur").each do |entry|
         next if entry == '.' or entry == '..'
 
-        pkgbuild_name = File.join("aur", entry)
-        if File.exists? pkgbuild_name
-          package = parse_pkgbuild(entry, pkgbuild_name)
-          aur_list[package.name] = package if package
-        end
+        pkgbuild_file = File.join("aur", entry)
+        aur_list.merge!(parse_pkgbuild(entry, pkgbuild_file)) if File.exists? pkgbuild_file
       end
 
       serialize_list(aur_list.values)
