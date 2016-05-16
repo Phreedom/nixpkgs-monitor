@@ -9,7 +9,7 @@ module NixPkgsMonitor module PackageUpdaters module Repository
     def self.tarballs
       @tarballs ||= Hash.new do |h, pkgname|
         h[pkgname] = JSON.parse(http_agent.get("http://rubygems.org/api/v1/versions/#{pkgname}.json").body)
-                          .map{|v| v["number"]}
+                         .map{|v| v["number"]}
       end
     end
 

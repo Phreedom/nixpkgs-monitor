@@ -19,6 +19,7 @@ module NixPkgsMonitor module PackageUpdaters module Repository
             tarballs[name] << version if name and version
           end
         rescue Net::HTTPForbidden, Mechanize::ResponseCodeError
+          log.warn "failed to fetch http://sourceforge.net/projects/#{sf_project}/rss"
         end
 
         h[sf_project] = tarballs
