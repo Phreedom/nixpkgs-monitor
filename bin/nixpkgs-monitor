@@ -139,8 +139,12 @@ end
 
 abort "No action requested. See --help for more information." unless distros_to_update.count > 0 or actions.count > 0
 
-Sequel.extension :migration
-Sequel::Migrator.run(DB, File.join(File.dirname(__FILE__), '..', 'lib', 'nixpkgs_monitor', 'migrations') )
+begin
+  Sequel.extension :migration
+  Sequel::Migrator.run(DB, File.join(File.dirname(__FILE__), '..', 'lib', 'nixpkgs_monitor', 'migrations') )
+rescue
+  log.debug "Did not require migration"
+end
 
 distros_to_update.each do |distro|
   begin
@@ -507,7 +511,7 @@ if actions.include? :cve_check
 
   products.each_pair do |product, versions|
     versions.each do |version|
-      log.warn "can't parse version #{product} : #{version}" unless version =~ /^\d+\.\d+\.\d+\.\d+/ or version =~ /^\d+\.\d+\.\d+/ or version =~ /^\d+\.\d+/ or version =~ /^\d+/ 
+      log.warn "can't parse version #{product} : #{version}" unless version =~ /^\d+\.\d+\.\d+\.\d+/ or version =~ /^\d+\.\d+\.\d+/ or version =~ /^\d+\.\d+/ or version =~ /^\d+/
     end
   end
 
@@ -582,13 +586,13 @@ if actions.include? :cve_check
       end.to_set
 
     versions.each do |version|
-        version =~ /^\d+\.\d+\.\d+\.\d+/ or version =~ /^\d+\.\d+\.\d+/ or version =~ /^\d+\.\d+/ or version =~ /^\d+/ 
+        version =~ /^\d+\.\d+\.\d+\.\d+/ or version =~ /^\d+\.\d+\.\d+/ or version =~ /^\d+\.\d+/ or version =~ /^\d+/
         v = exact_version_match.include?(product) ? version.downcase : $&
         next unless v
 
         pkgs.each do |pkg|
             next if exact_name_match.include?(pkg.name) and not exact_name_match.include?(product)
-            pkg.version =~ /^\d+\.\d+\.\d+\.\d+/ or pkg.version =~ /^\d+\.\d+\.\d+/ or pkg.version =~ /^\d+\.\d+/ or pkg.version =~ /^\d+/ 
+            pkg.version =~ /^\d+\.\d+\.\d+\.\d+/ or pkg.version =~ /^\d+\.\d+\.\d+/ or pkg.version =~ /^\d+\.\d+/ or pkg.version =~ /^\d+/
             v2 = exact_version_match.include?(product) ? pkg.version.downcase : $&
             next unless v2
 
